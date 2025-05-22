@@ -1,30 +1,23 @@
 package jpeg
 
 import chisel3._
-import chisel3.util._
-import PixelBundles._
 
-class ImageCompressorTop(width: Int, height: Int, subMode: Int, downFactor: Int) extends Module {
+class ImageCompressorTop extends Module {
   val io = IO(new Bundle {
-    val in  = Flipped(Decoupled(new PixelRGB))
-    val out = Decoupled(new PixelYCbCr)
+    val in  = Flipped(Decoupled(new PixelBundle))
+    val out =     Decoupled(new PixelYCbCrBundle)
   })
 
-  val conv = Module(new RGB2YCbCr)
-  val subs = Module(new ChromaSubsampler(width, height, subMode))
-  val spat = Module(new SpatialDownsampler(width, height, downFactor))
-  val quant = Module(new ColorQuantizer)
+  // instantiate pipeline
+  val toYC   = Module(new RGB2YCbCr)
+  val spatial= Module(new SpatialDownsampler)
+  val quant  = Module(new ColorQuantizer)
+  val chroma = Module(new ChromaSubsampler)
 
-  conv.io.in <> io.in
-  conv.io.out <> subs.io.in
-
-  subs.io.sof := false.B
-  subs.io.eol := false.B
-  subs.io.out <> spat.io.in
-
-  spat.io.sof := false.B
-  spat.io.eol := false.B
-  spat.io.out <> quant.io.in
-
-  quant.io.out <> io.out
+  // wire it up
+  toYC.io.in   <> io.in
+  toYC.io.out  <> spatial.io.in
+  spatial.io.out <> quant.io.in
+  quant.io.out   <> chroma.io.in
+  chroma.io.out  <> io.out
 }
