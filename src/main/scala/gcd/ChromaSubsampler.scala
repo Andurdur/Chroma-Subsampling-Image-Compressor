@@ -80,8 +80,8 @@ class ChromaSubsampler(width: Int, height: Int, mode: Int) extends Module {
     crShift(1) := io.in.bits.cr
   }
 
-  val cbSub = Wire(UInt(8.W))
-  val crSub = Wire(UInt(8.W))
+  val cbSub = WireDefault(0.U(8.W))
+  val crSub = WireDefault(0.U(8.W))
   when(doSample) {
     switch(mode.U) {
       is(0.U) {
@@ -105,9 +105,6 @@ class ChromaSubsampler(width: Int, height: Int, mode: Int) extends Module {
         crSub := (sumCr + 1.U) >> 1
       }
     }
-  }.otherwise {
-    cbSub := 0.U
-    crSub := 0.U
   }
 
   io.out.valid := doSample
