@@ -38,3 +38,13 @@ A hardware‑accelerated image compression pipeline implemented in **Scala** and
   Built‑in unit tests using ChiselTest; example test vectors and Scala-based test harness.
 
 ---
+
+## Requirements
+
+- **Scala 2.13+**  
+- **sbt 1.5+**  
+- **Chisel 3.5.x** (or later)  
+- **ChiselTest** (for simulation)  
+- **FIRRTL Compiler** (automatically pulled in via sbt)
+
+---
