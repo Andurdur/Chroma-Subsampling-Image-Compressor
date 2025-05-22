@@ -15,7 +15,7 @@ class ChromaSubsampler(width: Int, height: Int, mode: Int) extends Module {
 
   val colCnt = RegInit(0.U(log2Ceil(width).W))
   val rowCnt = RegInit(0.U(log2Ceil(height).W))
-  when(io.in.fire()) {
+  when(io.in.fire) {
     when(io.eol) {
       colCnt := 0.U
       rowCnt := rowCnt + 1.U
@@ -45,9 +45,9 @@ class ChromaSubsampler(width: Int, height: Int, mode: Int) extends Module {
   val crBuf1 = SyncReadMem(width, UInt(8.W))
 
   val writeSel = RegInit(false.B)
-  when(io.in.fire() && io.eol) { writeSel := ~writeSel }
+  when(io.in.fire && io.eol) { writeSel := ~writeSel }
 
-  when(io.in.fire()) {
+  when(io.in.fire) {
     when(!writeSel) {
       cbBuf0.write(colCnt, io.in.bits.cb)
       crBuf0.write(colCnt, io.in.bits.cr)
@@ -73,7 +73,7 @@ class ChromaSubsampler(width: Int, height: Int, mode: Int) extends Module {
 
   val cbShift = Reg(Vec(2, UInt(8.W)))
   val crShift = Reg(Vec(2, UInt(8.W)))
-  when(io.in.fire()) {
+  when(io.in.fire) {
     cbShift(0) := cbShift(1)
     cbShift(1) := io.in.bits.cb
     crShift(0) := crShift(1)
