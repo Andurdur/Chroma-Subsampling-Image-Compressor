@@ -1,5 +1,6 @@
 package jpeg
 
+import PixelBundles._
 import chisel3._
 import chisel3.util._
 
@@ -9,10 +10,10 @@ class RGB2YCbCr extends Module {
     val out = Decoupled(new PixelYCbCrBundle)
   })
 
-  // sign‑extend inputs
-  val rS = io.in.bits.r.asSInt
-  val gS = io.in.bits.g.asSInt
-  val bS = io.in.bits.b.asSInt
+  // zero‑extend the 8‑bit UInt into a 9‑bit SInt so 0..255 stays positive
+  val r =      Cat(0.U(1.W), io.in.bits.r).asSInt
+  val g =      Cat(0.U(1.W), io.in.bits.g).asSInt
+  val b =      Cat(0.U(1.W), io.in.bits.b).asSInt
 
   // fixed‑point multiply
   val yInt  =  77.S  * rS + 150.S * gS +  29.S * bS
