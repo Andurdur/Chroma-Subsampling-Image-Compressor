@@ -15,6 +15,7 @@ class ImageReconstructionSpec extends AnyFlatSpec with ChiselScalatestTester {
       var inCount = 0
       var outCount = 0
 
+      dut.io.out.ready.poke(true.B)
       dut.io.in.valid.poke(false.B)
 
       while (outCount < totalOut) {
