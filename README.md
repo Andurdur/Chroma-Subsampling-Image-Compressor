@@ -4,14 +4,22 @@ A hardware‑accelerated image compression pipeline implemented in **Scala** and
 
 ---
 
-## Features
+## Modules
 
-- **Scala & Chisel3**: Full compression pipeline expressed as parametrizable hardware modules.
-- **RGB → YCbCr Converter**: Fixed‑point modules computing Y, Cb, and Cr channels per ITU‑R BT.601.
-- **Chroma Subsampling Module**: Supports common modes (4:4:4, 4:2:2, 4:2:0) and custom H/V ratios.
-- **Upsampling & Reconstruction**: Interpolation‑based upsampler and RGB reconstructor blocks.
-- **Tile‑Based Local Processing**: Streamed per‑tile or per‑line operation, no full‑frame buffers required.
-- **Verilog Generation**: SBT tasks for generating synthesizable Verilog and FIRRTL.
-- **Testbenches & Assertions**: ChiselTest‑driven unit tests and formal property checks.
+- **RGB2YCB**  
+  Converts incoming RGB pixel streams into Y (luma), Cb, and Cr (chroma) channels per ITU‑R BT.601.
+
+- **ChromaSubsampler**  
+  Locally downsamples Cb/Cr channels (e.g. 4:4:4 → 4:2:2 or 4:2:0) on a per‑block or per‑row basis.
+
+- **SpatialDownSampler**  
+  Optional further luma and chroma downsampling via configurable kernel/window sizes.
+
+- **ColorQuantizer**  
+  Applies bit–width reduction or palette quantization to Y, Cb, and Cr channels.
+
+- **PixelBundle**  
+  Recombines processed luma/chroma into packetized pixel bundles for downstream DMA or memory write‑back.
 
 ---
+
