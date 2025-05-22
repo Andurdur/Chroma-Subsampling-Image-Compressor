@@ -34,9 +34,6 @@ A hardware‑accelerated image compression pipeline implemented in **Scala** and
 - **Parameterizable Ratios**  
   Support for standard subsampling modes (4:4:4, 4:2:2, 4:2:0) and custom H×V downsample factors.
 
-- **Lightweight Quantization**  
-  Choose bit‑widths per channel or use a small lookup‑table palette.
-
 - **Testbench & Simulation**  
   Built‑in unit tests using ChiselTest; example test vectors and Scala-based test harness.
 
