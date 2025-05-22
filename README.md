@@ -23,3 +23,21 @@ A hardware‑accelerated image compression pipeline implemented in **Scala** and
 
 ---
 
+## Basic Features
+
+- **Modular Chisel RTL**  
+  Each block can be instantiated, parameterized, or swapped independently.
+
+- **Streaming Interface**  
+  Ready/valid handshakes on pixel streams for back‑pressure and easy integration with AXI4‑Stream or custom FIFOs.
+
+- **Parameterizable Ratios**  
+  Support for standard subsampling modes (4:4:4, 4:2:2, 4:2:0) and custom H×V downsample factors.
+
+- **Lightweight Quantization**  
+  Choose bit‑widths per channel or use a small lookup‑table palette.
+
+- **Testbench & Simulation**  
+  Built‑in unit tests using ChiselTest; example test vectors and Scala-based test harness.
+
+---
