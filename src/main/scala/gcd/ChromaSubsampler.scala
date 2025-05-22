@@ -7,10 +7,10 @@ import PixelBundles._
 class ChromaSubsampler(width: Int, height: Int, mode: Int) extends Module {
   require(width > 0 && height > 0)
   val io = IO(new Bundle {
-    val in = Flipped(Decoupled(new PixelYCbCr))
-    val out = Decoupled(new PixelYCbCr)
-    val sof = Input(Bool())
-    val eol = Input(Bool())
+    val in    = Flipped(Decoupled(new PixelYCbCr))
+    val out   = Decoupled(new PixelYCbCr)
+    val sof   = Input(Bool())
+    val eol   = Input(Bool())
   })
 
   val colCnt = RegInit(0.U(log2Ceil(width).W))
@@ -23,9 +23,7 @@ class ChromaSubsampler(width: Int, height: Int, mode: Int) extends Module {
       colCnt := colCnt + 1.U
     }
   }
-  when(io.sof) {
-    rowCnt := 0.U
-  }
+  when(io.sof) { rowCnt := 0.U }
 
   val sampleH = mode match {
     case 0 => true.B
@@ -47,27 +45,31 @@ class ChromaSubsampler(width: Int, height: Int, mode: Int) extends Module {
   val crBuf1 = SyncReadMem(width, UInt(8.W))
 
   val writeSel = RegInit(false.B)
-  when(io.in.fire() && io.eol) {
-    writeSel := ~writeSel
-  }
+  when(io.in.fire() && io.eol) { writeSel := ~writeSel }
 
   when(io.in.fire()) {
-    if (writeSel.litValue == 0) {
+    when(!writeSel) {
       cbBuf0.write(colCnt, io.in.bits.cb)
       crBuf0.write(colCnt, io.in.bits.cr)
-    } else {
+    }.otherwise {
       cbBuf1.write(colCnt, io.in.bits.cb)
       crBuf1.write(colCnt, io.in.bits.cr)
     }
   }
 
-  val cbPrev = Mux(writeSel, cbBuf1, cbBuf0)
-  val crPrev = Mux(writeSel, crBuf1, crBuf0)
+  val cbUp1_buf0 = cbBuf0.read(colCnt)
+  val cbUp1_buf1 = cbBuf1.read(colCnt)
+  val cbUp1      = Mux(writeSel, cbUp1_buf1, cbUp1_buf0)
+  val cbUp0_buf0 = cbBuf0.read(colCnt - 1.U)
+  val cbUp0_buf1 = cbBuf1.read(colCnt - 1.U)
+  val cbUp0      = Mux(writeSel, cbUp0_buf1, cbUp0_buf0)
 
-  val cbUp1 = cbPrev.read(colCnt)
-  val cbUp0 = cbPrev.read(colCnt - 1.U)
-  val crUp1 = crPrev.read(colCnt)
-  val crUp0 = crPrev.read(colCnt - 1.U)
+  val crUp1_buf0 = crBuf0.read(colCnt)
+  val crUp1_buf1 = crBuf1.read(colCnt)
+  val crUp1      = Mux(writeSel, crUp1_buf1, crUp1_buf0)
+  val crUp0_buf0 = crBuf0.read(colCnt - 1.U)
+  val crUp0_buf1 = crBuf1.read(colCnt - 1.U)
+  val crUp0      = Mux(writeSel, crUp0_buf1, crUp0_buf0)
 
   val cbShift = Reg(Vec(2, UInt(8.W)))
   val crShift = Reg(Vec(2, UInt(8.W)))
@@ -109,8 +111,8 @@ class ChromaSubsampler(width: Int, height: Int, mode: Int) extends Module {
   }
 
   io.out.valid := doSample
-  io.in.ready := io.out.ready
-  io.out.bits.y := io.in.bits.y
+  io.in.ready  := io.out.ready
+  io.out.bits.y  := io.in.bits.y
   io.out.bits.cb := cbSub
   io.out.bits.cr := crSub
 }
