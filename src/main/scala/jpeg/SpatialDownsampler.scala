@@ -8,20 +8,26 @@ class SpatialDownsampler(width: Int, height: Int, factor: Int) extends Module {
   require(factor == 2 || factor == 4 || factor == 8)
 
   val io = IO(new Bundle {
-    val in  = Flipped(Decoupled(new PixelYCbCr))
-    val out = Decoupled(new PixelYCbCr)
+    val in   = Flipped(Decoupled(new PixelYCbCr))
+    val out  = Decoupled(new PixelYCbCr)
+    val sof  = Input(Bool())
+    val eol  = Input(Bool())
   })
 
   val colCnt = RegInit(0.U(log2Ceil(width).W))
   val rowCnt = RegInit(0.U(log2Ceil(height).W))
 
   when(io.in.fire) {
-    when(colCnt === (width-1).U) {
+    when(io.eol) {
       colCnt := 0.U
       rowCnt := rowCnt + 1.U
     }.otherwise {
       colCnt := colCnt + 1.U
     }
+  }
+  when(io.sof) {
+    colCnt := 0.U
+    rowCnt := 0.U
   }
 
   val sampleH = factor match {
