@@ -5,22 +5,24 @@ import chisel3.util._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import PixelBundle._
 
 class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
   "SpatialDownsampler" should "downsample a 4x4 YCbCr image by factor 2" in {
     test(new SpatialDownsampler(4, 4, 2)) { dut =>
-      val inPixels = (0 until 16).map(i => (i.U(8.W), (128 + i).U(8.W), (64 + i).U(8.W)))
       dut.io.out.ready.poke(true.B)
       var inCount = 0
       var outCount = 0
+      val totalIn = 16
+      val expectedOut = 4
 
-      while (outCount < 4) {
-        if (inCount < inPixels.size && dut.io.in.ready.peek().litToBoolean) {
-          val (y, cb, cr) = inPixels(inCount)
-          dut.io.in.bits.y.poke(y)
-          dut.io.in.bits.cb.poke(cb)
-          dut.io.in.bits.cr.poke(cr)
+      while (outCount < expectedOut) {
+        if (inCount < totalIn && dut.io.in.ready.peek().litToBoolean) {
+          val yVal  = inCount.U
+          val cbVal = (128.U + inCount.U)
+          val crVal = (64.U + inCount.U)
+          dut.io.in.bits.y.poke(yVal)
+          dut.io.in.bits.cb.poke(cbVal)
+          dut.io.in.bits.cr.poke(crVal)
           dut.io.in.valid.poke(true.B)
           inCount += 1
         } else {
@@ -28,10 +30,15 @@ class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with
         }
 
         if (dut.io.out.valid.peek().litToBoolean) {
-          val (yExp, cbExp, crExp) = inPixels((outCount * 2) * 4 + (outCount * 2))
-          dut.io.out.bits.y.peek().litValue.toInt shouldBe yExp.litValue.toInt
-          dut.io.out.bits.cb.peek().litValue.toInt shouldBe cbExp.litValue.toInt
-          dut.io.out.bits.cr.peek().litValue.toInt shouldBe crExp.litValue.toInt
+          val expIndex = outCount match {
+            case 0 => 0
+            case 1 => 2
+            case 2 => 8
+            case 3 => 10
+          }
+          dut.io.out.bits.y.peek().litValue.toInt should be (expIndex)
+          dut.io.out.bits.cb.peek().litValue.toInt should be (128 + expIndex)
+          dut.io.out.bits.cr.peek().litValue.toInt should be (64 + expIndex)
           outCount += 1
         }
         dut.clock.step()
