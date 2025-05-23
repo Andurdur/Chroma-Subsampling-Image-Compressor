@@ -17,12 +17,9 @@ class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with
 
       while (outCount < expectedOut) {
         if (inCount < totalIn && dut.io.in.ready.peek().litToBoolean) {
-          val yVal  = inCount.U
-          val cbVal = (128.U + inCount.U)
-          val crVal = (64.U + inCount.U)
-          dut.io.in.bits.y.poke(yVal)
-          dut.io.in.bits.cb.poke(cbVal)
-          dut.io.in.bits.cr.poke(crVal)
+                    dut.io.in.bits.y.poke(inCount)
+          dut.io.in.bits.cb.poke(128 + inCount)
+          dut.io.in.bits.cr.poke(64 + inCount)
           dut.io.in.valid.poke(true.B)
           inCount += 1
         } else {
