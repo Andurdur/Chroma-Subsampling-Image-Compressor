@@ -2,7 +2,7 @@ package jpeg
 
 import chisel3._
 import chisel3.util._
-import PixelBundles._
+import jpeg.PixelBundles._
 
 class SpatialDownsampler(width: Int, height: Int, factor: Int) extends Module {
   require(width > 0 && height > 0)
