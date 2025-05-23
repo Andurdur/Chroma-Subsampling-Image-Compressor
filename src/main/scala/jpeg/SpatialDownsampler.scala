@@ -2,7 +2,7 @@ package jpeg
 
 import chisel3._
 import chisel3.util._
-import jpeg.PixelBundles._
+import jpeg.PixelBundle._
 
 class SpatialDownsampler(width: Int, height: Int, factor: Int) extends Module {
   require(width > 0 && height > 0)
@@ -22,7 +22,7 @@ class SpatialDownsampler(width: Int, height: Int, factor: Int) extends Module {
     when(io.eol) {
       colCnt := 0.U
       rowCnt := rowCnt + 1.U
-    } .otherwise {
+    }.otherwise {
       colCnt := colCnt + 1.U
     }
   }
