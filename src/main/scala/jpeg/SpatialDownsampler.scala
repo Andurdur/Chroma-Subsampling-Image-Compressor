@@ -2,15 +2,14 @@ package jpeg
 
 import chisel3._
 import chisel3.util._
-import jpeg.PixelBundle._
 
 class SpatialDownsampler(width: Int, height: Int, factor: Int) extends Module {
   require(width > 0 && height > 0)
-  require(factor == 2 || factor == 4 || factor == 8)
+  require(Set(2,4,8).contains(factor))
 
   val io = IO(new Bundle {
-    val in   = Flipped(Decoupled(new PixelYCbCr))
-    val out  = Decoupled(new PixelYCbCr)
+    val in   = Flipped(Decoupled(new PixelYCbCrBundle))
+    val out  =     Decoupled(new PixelYCbCrBundle)
     val sof  = Input(Bool())
     val eol  = Input(Bool())
   })
@@ -45,6 +44,5 @@ class SpatialDownsampler(width: Int, height: Int, factor: Int) extends Module {
 
   io.out.valid := doSample
   io.in.ready  := io.out.ready
-
-  io.out.bits := Mux(doSample, io.in.bits, WireInit(0.U.asTypeOf(new PixelYCbCr)))
+  io.out.bits  := Mux(doSample, io.in.bits, WireInit(0.U.asTypeOf(new PixelYCbCrBundle)))
 }
