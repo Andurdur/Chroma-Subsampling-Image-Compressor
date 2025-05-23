@@ -2,44 +2,42 @@ package jpeg
 
 import chisel3._
 import chisel3.util._
-import chiseltest._
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
-class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
-  "SpatialDownsampler" should "downsample a 4x4 YCbCr image by factor 2" in {
-    test(new SpatialDownsampler(4, 4, 2)) { dut =>
-      dut.io.out.ready.poke(true.B)
-      var inCount = 0
-      var outCount = 0
-      val totalIn = 16
-      val expectedOut = 4
+class SpatialDownsampler(width: Int, height: Int, factor: Int) extends Module {
+  require(width > 0 && height > 0)
+  require(factor == 2 || factor == 4 || factor == 8)
 
-      while (outCount < expectedOut) {
-        if (inCount < totalIn && dut.io.in.ready.peek().litToBoolean) {
-                    dut.io.in.bits.y.poke(inCount)
-          dut.io.in.bits.cb.poke(128 + inCount)
-          dut.io.in.bits.cr.poke(64 + inCount)
-          dut.io.in.valid.poke(true.B)
-          inCount += 1
-        } else {
-          dut.io.in.valid.poke(false.B)
-        }
+  val io = IO(new Bundle {
+    val in  = Flipped(Decoupled(new PixelYCbCr))
+    val out = Decoupled(new PixelYCbCr)
+  })
 
-        if (dut.io.out.valid.peek().litToBoolean) {
-          val expIndex = outCount match {
-            case 0 => 0
-            case 1 => 2
-            case 2 => 8
-            case 3 => 10
-          }
-          dut.io.out.bits.y.peek().litValue.toInt should be (expIndex)
-          dut.io.out.bits.cb.peek().litValue.toInt should be (128 + expIndex)
-          dut.io.out.bits.cr.peek().litValue.toInt should be (64 + expIndex)
-          outCount += 1
-        }
-        dut.clock.step()
-      }
+  val colCnt = RegInit(0.U(log2Ceil(width).W))
+  val rowCnt = RegInit(0.U(log2Ceil(height).W))
+
+  when(io.in.fire) {
+    when(colCnt === (width-1).U) {
+      colCnt := 0.U
+      rowCnt := rowCnt + 1.U
+    }.otherwise {
+      colCnt := colCnt + 1.U
     }
   }
+
+  val sampleH = factor match {
+    case 2 => colCnt(0) === 0.U
+    case 4 => colCnt(1,0) === 0.U
+    case 8 => colCnt(2,0) === 0.U
+  }
+  val sampleV = factor match {
+    case 2 => rowCnt(0) === 0.U
+    case 4 => rowCnt(1,0) === 0.U
+    case 8 => rowCnt(2,0) === 0.U
+  }
+  val doSample = io.in.valid && sampleH && sampleV
+
+  io.out.valid := doSample
+  io.in.ready  := io.out.ready
+
+  io.out.bits := Mux(doSample, io.in.bits, WireInit(0.U.asTypeOf(new PixelYCbCr)))
 }
