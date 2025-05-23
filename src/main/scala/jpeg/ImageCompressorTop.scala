@@ -12,7 +12,7 @@ class ImageCompressorTop(width: Int, height: Int, subMode: Int, downFactor: Int)
   })
 
   val toYC    = Module(new RGB2YCbCr)
-  val chroma  = Module(new ChromaSubsampler(subMode))
+  val chroma  = Module(new ChromaSubsampler)
   val spatial = Module(new SpatialDownsampler(width, height, downFactor))
   val quant   = Module(new ColorQuantizer)
 
