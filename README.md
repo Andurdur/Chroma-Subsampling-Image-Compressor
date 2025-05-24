@@ -39,6 +39,7 @@ From the project root:
    sbt compile
 
 1. **Run all Tests**: 
+    ```bash
     sbt test
 
 ## Requirements
