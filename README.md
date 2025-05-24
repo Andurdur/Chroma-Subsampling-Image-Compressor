@@ -7,13 +7,13 @@ A hardware‑accelerated image compression pipeline implemented in **Scala** and
 ## Modules
 
 - **RGB2YCB**  
-  Converts incoming RGB pixel streams into Y (luma), Cb, and Cr (chroma) channels per ITU‑R BT.601.
+  Converts incoming RGB pixel streams into Y (luma), Cb, and Cr (chroma) channels.
 
 - **ChromaSubsampler**  
   Locally downsamples Cb/Cr channels (e.g. 4:4:4 → 4:2:2 or 4:2:0) on a per‑block or per‑row basis.
 
 - **SpatialDownSampler**  
-  Optional further luma and chroma downsampling via configurable kernel/window sizes.
+  Further luma and chroma downsampling via configurable kernel/window sizes.
 
 - **ColorQuantizer**  
   Applies bit–width reduction or palette quantization to Y, Cb, and Cr channels.
@@ -23,21 +23,23 @@ A hardware‑accelerated image compression pipeline implemented in **Scala** and
 
 ---
 
-## Basic Features
+| Component          | Status      | Notes                                        |
+| ------------------ | ----------- | -------------------------------------------- |
+| RGB2YCbCr          | Complete    | Tests pass against `ReferenceModel`          |
+| SpatialDownsampler | Complete    | Extensively tested with ScalaTest/ChiselTest |
+| ChromaSubsampler   | In progress | Currently a no-op pass-through stub          |
+| ColorQuantizer     | In progress | Currently a no-op pass-through stub          |
+| ImageCompressorTop | In progress | Top-level wires modules together             |
 
-- **Modular Chisel RTL**  
-  Each block can be instantiated, parameterized, or swapped independently.
+## Building & Running Tests
+From the project root:
 
-- **Streaming Interface**  
-  Ready/valid handshakes on pixel streams for back‑pressure and easy integration with AXI4‑Stream or custom FIFOs.
+1. **Compile** the code:  
+   ```bash
+   sbt compile
 
-- **Parameterizable Ratios**  
-  Support for standard subsampling modes (4:4:4, 4:2:2, 4:2:0) and custom H×V downsample factors.
-
-- **Testbench & Simulation**  
-  Built‑in unit tests using ChiselTest; example test vectors and Scala-based test harness.
-
----
+1. **Run all Tests**: 
+    sbt test
 
 ## Requirements
 
