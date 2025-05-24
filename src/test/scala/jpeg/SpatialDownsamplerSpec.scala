@@ -6,107 +6,143 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.awt.image.BufferedImage
-import java.io.File
-import javax.imageio.ImageIO
-
-// Import the ReferenceModel case classes
-import jpeg.ReferenceModel.{PixelRGB, PixelYCbCr}
-
 class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
-  "SpatialDownsampler" should "downsample a 4×4 YCbCr image by factor 2" in {
+  behavior of "SpatialDownsampler"
+
+  it should "downsample a 4×4 YCbCr image by factor 2" in {
     test(new SpatialDownsampler(4, 4, 2)) { dut =>
       dut.io.out.ready.poke(true.B)
-      var inCount  = 0
+      var inIdx = 0
       var outCount = 0
-      val totalIn     = 16
-      val expectedOut = 4
+      val totalIn = 16
+      val expected = Seq(0, 2, 8, 10)
 
-      while (outCount < expectedOut) {
-        if (inCount < totalIn && dut.io.in.ready.peek().litToBoolean) {
-          // generate a simple ramp
-          dut.io.in.bits.y.poke(inCount)
-          dut.io.in.bits.cb.poke(128 + inCount)
-          dut.io.in.bits.cr.poke(64  + inCount)
-          dut.io.in.valid.poke(true.B)
-          inCount += 1
-        } else {
-          dut.io.in.valid.poke(false.B)
+      while (outCount < expected.size) {
+        // feed inputs whenever ready
+        dut.io.in.valid.poke(inIdx < totalIn && dut.io.in.ready.peek().litToBoolean)
+        if (dut.io.in.valid.peek().litToBoolean) {
+          dut.io.in.bits.y.poke(inIdx.U)
+          dut.io.in.bits.cb.poke((100 + inIdx).U)
+          dut.io.in.bits.cr.poke((200 + inIdx).U)
+          inIdx += 1
         }
-
+        // capture outputs
         if (dut.io.out.valid.peek().litToBoolean) {
-          // We expect outputs at indices 0, 2, 8, 10
-          val expIdx = outCount match {
-            case 0 => 0
-            case 1 => 2
-            case 2 => 8
-            case 3 => 10
-          }
-          dut.io.out.bits.y.peek().litValue.toInt  shouldBe expIdx
-          dut.io.out.bits.cb.peek().litValue.toInt shouldBe 128 + expIdx
-          dut.io.out.bits.cr.peek().litValue.toInt shouldBe 64  + expIdx
+          val exp = expected(outCount)
+          dut.io.out.bits.y.peek().litValue.toInt shouldBe exp
+          dut.io.out.bits.cb.peek().litValue.toInt shouldBe (100 + exp)
+          dut.io.out.bits.cr.peek().litValue.toInt shouldBe (200 + exp)
           outCount += 1
         }
-
         dut.clock.step()
       }
     }
   }
 
-  it should "downsample a 16×16 PNG to 8×8 and write it out" in {
-    // read a 16×16 input image
-    val inImg: BufferedImage = ImageIO.read(new File("test_images/in16x16.png"))
-    require(inImg.getWidth == 16 && inImg.getHeight == 16)
-
-    test(new SpatialDownsampler(16, 16, 2)) { dut =>
-      dut.io.out.ready.poke(true.B)
-      // optional frame signals
-      dut.io.sof.poke(true.B); dut.io.eol.poke(false.B)
+  it should "handle back-pressure correctly" in {
+    test(new SpatialDownsampler(4, 4, 2)) { dut =>
+      // When output is not ready, input should stall
+      dut.io.out.ready.poke(false.B)
       dut.clock.step()
-      dut.io.sof.poke(false.B)
+      dut.io.in.ready.peek().litToBoolean shouldBe false
 
-      // feed in pixels row-major
-      for (y <- 0 until 16; x <- 0 until 16) {
-        val rgb = inImg.getRGB(x, y)
-        val r = (rgb >> 16) & 0xFF
-        val g = (rgb >> 8)  & 0xFF
-        val b = (rgb      ) & 0xFF
-        // Convert to YCbCr using ReferenceModel
-        val PixelYCbCr(yy, cb, cr) = ReferenceModel.rgb2ycbcr(PixelRGB(r, g, b))
+      // Now allow output, input should resume
+      dut.io.out.ready.poke(true.B)
+      dut.clock.step()
+      dut.io.in.ready.peek().litToBoolean shouldBe true
+    }
+  }
 
-        dut.io.in.bits.y.poke(yy.U)
-        dut.io.in.bits.cb.poke(cb.U)
-        dut.io.in.bits.cr.poke(cr.U)
-        dut.io.in.valid.poke(true.B)
-        dut.clock.step()
-      }
-      dut.io.in.valid.poke(false.B)
+  it should "support factor 4 on 8×8 data" in {
+    val size = 8
+    val expected = (for {
+      row <- 0 until size if row % 4 == 0
+      col <- 0 until size if col % 4 == 0
+    } yield row * size + col).toSeq
 
-      // collect 8×8 outputs
-      val outPixels = Array.fill[(Int,Int,Int)](64)((0,0,0))
-      var idx = 0
-      while (idx < 64) {
+    test(new SpatialDownsampler(size, size, 4)) { dut =>
+      dut.io.out.ready.poke(true.B)
+      var inIdx = 0
+      var outCount = 0
+      val totalIn = size * size
+
+      while (outCount < expected.size) {
+        dut.io.in.valid.poke(inIdx < totalIn && dut.io.in.ready.peek().litToBoolean)
+        if (dut.io.in.valid.peek().litToBoolean) {
+          dut.io.in.bits.y.poke(inIdx.U)
+          dut.io.in.bits.cb.poke((inIdx * 2).U)
+          dut.io.in.bits.cr.poke((inIdx * 3).U)
+          inIdx += 1
+        }
         if (dut.io.out.valid.peek().litToBoolean) {
-          val yv  = dut.io.out.bits.y.peek().litValue.toInt
-          val cbv = dut.io.out.bits.cb.peek().litValue.toInt
-          val crv = dut.io.out.bits.cr.peek().litValue.toInt
-          outPixels(idx) = (yv, cbv, crv)
-          idx += 1
+          dut.io.out.bits.y.peek().litValue.toInt shouldBe expected(outCount)
+          outCount += 1
         }
         dut.clock.step()
       }
+    }
+  }
 
-      // write to 8×8 PNG
-      val outImg = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB)
-      for ((pixel, i) <- outPixels.zipWithIndex) {
-        val (yy, cb, cr) = pixel
-        val (r2, g2, b2) = ReferenceModel.ycbcr2rgb(yy, cb, cr)
-        val rgb2 = (r2 << 16) | (g2 << 8) | b2
-        val ox = i % 8
-        val oy = i / 8
-        outImg.setRGB(ox, oy, rgb2)
+  it should "support factor 8 on 16×16 data" in {
+    val size = 16
+    val expected = (for {
+      row <- 0 until size if row % 8 == 0
+      col <- 0 until size if col % 8 == 0
+    } yield row * size + col).toSeq
+
+    test(new SpatialDownsampler(size, size, 8)) { dut =>
+      dut.io.out.ready.poke(true.B)
+      var inIdx = 0
+      var outCount = 0
+      val totalIn = size * size
+
+      while (outCount < expected.size) {
+        dut.io.in.valid.poke(inIdx < totalIn && dut.io.in.ready.peek().litToBoolean)
+        if (dut.io.in.valid.peek().litToBoolean) {
+          dut.io.in.bits.y.poke(inIdx.U)
+          dut.io.in.bits.cb.poke((inIdx + 1).U)
+          dut.io.in.bits.cr.poke((inIdx + 2).U)
+          inIdx += 1
+        }
+        if (dut.io.out.valid.peek().litToBoolean) {
+          dut.io.out.bits.y.peek().litValue.toInt shouldBe expected(outCount)
+          outCount += 1
+        }
+        dut.clock.step()
       }
-      ImageIO.write(outImg, "png", new File("test_images/out8x8.png"))
+    }
+  }
+
+  it should "handle non-power-of-two dimensions" in {
+    val width = 5; val height = 3; val factor = 2
+    val expected = Seq(0, 2, 4, 10, 12, 14)
+
+    test(new SpatialDownsampler(width, height, factor)) { dut =>
+      dut.io.out.ready.poke(true.B)
+      var inIdx = 0
+      var outCount = 0
+      val totalIn = width * height
+
+      while (outCount < expected.size) {
+        dut.io.in.valid.poke(inIdx < totalIn && dut.io.in.ready.peek().litToBoolean)
+        if (dut.io.in.valid.peek().litToBoolean) {
+          dut.io.in.bits.y.poke(inIdx.U)
+          dut.io.in.bits.cb.poke((10 + inIdx).U)
+          dut.io.in.bits.cr.poke((20 + inIdx).U)
+          inIdx += 1
+        }
+        if (dut.io.out.valid.peek().litToBoolean) {
+          dut.io.out.bits.y.peek().litValue.toInt shouldBe expected(outCount)
+          outCount += 1
+        }
+        dut.clock.step()
+      }
+    }
+  }
+
+  it should "reject unsupported factors" in {
+    intercept[IllegalArgumentException] {
+      new SpatialDownsampler(4, 4, 3)
     }
   }
 }
