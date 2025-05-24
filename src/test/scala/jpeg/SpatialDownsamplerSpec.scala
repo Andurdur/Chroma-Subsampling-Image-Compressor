@@ -10,6 +10,9 @@ import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
 
+// Import the ReferenceModel case classes
+import jpeg.ReferenceModel.{PixelRGB, PixelYCbCr}
+
 class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
   "SpatialDownsampler" should "downsample a 4×4 YCbCr image by factor 2" in {
     test(new SpatialDownsampler(4, 4, 2)) { dut =>
@@ -68,7 +71,8 @@ class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with
         val r = (rgb >> 16) & 0xFF
         val g = (rgb >> 8)  & 0xFF
         val b = (rgb      ) & 0xFF
-        val (yy, cb, cr) = ReferenceModel.rgb2ycbcr(r, g, b)
+        // Convert to YCbCr using ReferenceModel
+        val PixelYCbCr(yy, cb, cr) = ReferenceModel.rgb2ycbcr(PixelRGB(r, g, b))
 
         dut.io.in.bits.y.poke(yy.U)
         dut.io.in.bits.cb.poke(cb.U)
