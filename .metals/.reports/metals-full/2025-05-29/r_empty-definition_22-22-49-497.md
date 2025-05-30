@@ -1,3 +1,14 @@
+error id: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/main/scala/jpeg/ImageCompressorTop.scala:
+file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/main/scala/jpeg/ImageCompressorTop.scala
+empty definition using pc, found symbol in pc: 
+empty definition using semanticdb
+empty definition using fallback
+non-local guesses:
+
+offset: 248
+uri: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/main/scala/jpeg/ImageCompressorTop.scala
+text:
+```scala
 // package Chroma_Subsampling_Image_Compressor
 
 // import chisel3._
@@ -5,7 +16,7 @@
 
 // class ImageCompressorTop(width: Int, height: Int, subMode: Int, downFactor: Int) extends Module {
 //   val io = IO(new Bundle {
-//     val in  = Flipped(Decoupled(new PixelBundle))    // User's PixelBundle (r,g,b)
+//     val in  = Flippe@@d(Decoupled(new PixelBundle))    // User's PixelBundle (r,g,b)
 //     val out = Decoupled(new PixelYCbCrBundle) // User's PixelYCbCrBundle (y,cb,cr)
 //     val sof = Input(Bool())
 //     val eol = Input(Bool())
@@ -83,3 +94,10 @@
 //   //    printf(p"ICT_FINAL_OUTPUT_FIRE: Bits=${io.out.bits}\n")
 //   // }
 // }
+
+```
+
+
+#### Short summary: 
+
+empty definition using pc, found symbol in pc: 

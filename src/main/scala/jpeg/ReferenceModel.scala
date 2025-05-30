@@ -1,4 +1,4 @@
-package jpeg
+package Chroma_Subsampling_Image_Compressor
 
 /** Pure‐Scala “golden” model for rgb→ycbcr conversion */
 object ReferenceModel {

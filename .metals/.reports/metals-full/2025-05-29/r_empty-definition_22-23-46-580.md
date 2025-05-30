@@ -1,3 +1,14 @@
+error id: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/test/scala/jpeg/ImageCompressorTopSpec.scala:
+file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/test/scala/jpeg/ImageCompressorTopSpec.scala
+empty definition using pc, found symbol in pc: 
+empty definition using semanticdb
+empty definition using fallback
+non-local guesses:
+
+offset: 439
+uri: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/test/scala/jpeg/ImageCompressorTopSpec.scala
+text:
+```scala
 // package Chroma_Subsampling_Image_Compressor
 
 // import chisel3._
@@ -10,7 +21,7 @@
 
 //   behavior of "ImageCompressorTop Chroma Subsampling Verification"
 
-//   val inputPixelsRGB: Seq[Seq[(Int, Int, Int)]] = Seq(
+//   val inputPixelsR@@GB: Seq[Seq[(Int, Int, Int)]] = Seq(
 //     Seq((100, 150, 50), (110, 160, 60)), // Row 0: P00, P01
 //     Seq((120, 170, 70), (130, 180, 80))  // Row 1: P10, P11
 //   )
@@ -168,3 +179,10 @@
 //     }
 //   }
 // }
+
+```
+
+
+#### Short summary: 
+
+empty definition using pc, found symbol in pc: 

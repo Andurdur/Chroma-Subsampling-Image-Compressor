@@ -1,4 +1,4 @@
-package jpeg
+package Chroma_Subsampling_Image_Compressor
 
 import chisel3._
 

@@ -1,3 +1,14 @@
+error id: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/main/scala/jpeg/ChromaSubsampler.scala:`<none>`.
+file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/main/scala/jpeg/ChromaSubsampler.scala
+empty definition using pc, found symbol in pc: `<none>`.
+empty definition using semanticdb
+empty definition using fallback
+non-local guesses:
+
+offset: 449
+uri: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/main/scala/jpeg/ChromaSubsampler.scala
+text:
+```scala
 package Chroma_Subsampling_Image_Compressor
 
 import chisel3._
@@ -16,7 +27,7 @@ class YCbCrPixel(val bitWidth: Int) extends Bundle { // Used by ChromaSubsampler
   override def toPrintable: Printable = p"YCbCr(Y:${Y}, Cb:${Cb}, Cr:${Cr})"
 }
 
-class ChromaSubsampler(
+@@class ChromaSubsampler(
     val imageWidth: Int,
     val imageHeight: Int,
     val bitWidth: Int // Bit width of Y, Cb, Cr components
@@ -45,9 +56,8 @@ class ChromaSubsampler(
   val validReg = RegInit(false.B)
 
   // Registers to store the Cb and Cr values from the last relevant sampling point
-  val lastCbReg = RegInit(0.U(bitWidth.W)) // Initialize to ensure they have a defined value
-  val lastCrReg = RegInit(0.U(bitWidth.W)) // Initialize to ensure they have a defined value
-
+  val lastCbReg = Reg(UInt(bitWidth.W))
+  val lastCrReg = Reg(UInt(bitWidth.W))
 
   // Counters for current pixel column and row, advance when an input pixel is accepted (io.dataIn.fire)
   val (pixelCounter, pixelWrap) = Counter(io.dataIn.fire, imageWidth)
@@ -56,47 +66,49 @@ class ChromaSubsampler(
   io.dataIn.ready := !validReg || io.dataOut.ready
 
   // Default assignments for output bits (assigned from registers)
-  io.dataOut.bits.y  := yReg
-  io.dataOut.bits.cb := cbReg
-  io.dataOut.bits.cr := crReg
+  io.dataOut.bits.y  := yReg  // Changed to lowercase 'y'
+  io.dataOut.bits.cb := cbReg // Changed to lowercase 'cb'
+  io.dataOut.bits.cr := crReg // Changed to lowercase 'cr'
   io.dataOut.valid   := validReg
 
   // Logic for processing input pixels when they are valid and this module is ready
   when(io.dataIn.fire) { // io.dataIn.fire is (io.dataIn.valid && io.dataIn.ready)
-    yReg := io.dataIn.bits.y // Y component is always passed through
+    yReg := io.dataIn.bits.y // Changed to lowercase 'y'. Y component is always passed through
     validReg := true.B       // Output registers will now hold valid data
 
     // Determine current Cb and Cr values based on subsampling mode
-    val currentCb = WireDefault(lastCbReg) // Initialize with lastCbReg
-    val currentCr = WireDefault(lastCrReg) // Initialize with lastCrReg
-
+    val currentCb = Wire(UInt(bitWidth.W))
+    val currentCr = Wire(UInt(bitWidth.W))
 
     switch(io.mode) {
       is(ChromaSubsamplingMode.CHROMA_444) {
         // No subsampling: pass Cb and Cr directly
-        currentCb := io.dataIn.bits.cb
-        currentCr := io.dataIn.bits.cr
+        currentCb := io.dataIn.bits.cb // Changed to lowercase 'cb'
+        currentCr := io.dataIn.bits.cr // Changed to lowercase 'cr'
       }
       is(ChromaSubsamplingMode.CHROMA_422) {
         // Horizontal subsampling: Cb/Cr sampled at even columns
         when(pixelCounter % 2.U === 0.U) { // Even column
-          currentCb := io.dataIn.bits.cb
-          currentCr := io.dataIn.bits.cr
+          currentCb := io.dataIn.bits.cb // Changed
+          currentCr := io.dataIn.bits.cr // Changed
         } .otherwise { // Odd column
-          // currentCb and currentCr already defaulted to lastCbReg/lastCrReg
+          currentCb := lastCbReg // Use Cb from previous (even) pixel
+          currentCr := lastCrReg // Use Cr from previous (even) pixel
         }
       }
       is(ChromaSubsamplingMode.CHROMA_420) {
         // Horizontal and vertical subsampling: Cb/Cr sampled at (even_col, even_row)
         when(lineCounter % 2.U === 0.U) { // Even row
           when(pixelCounter % 2.U === 0.U) { // Even column
-            currentCb := io.dataIn.bits.cb
-            currentCr := io.dataIn.bits.cr
+            currentCb := io.dataIn.bits.cb // Changed
+            currentCr := io.dataIn.bits.cr // Changed
           } .otherwise { // Odd column, Even row
-            // currentCb and currentCr already defaulted to lastCbReg/lastCrReg
+            currentCb := lastCbReg // Use Cb/Cr from the last (even_col, even_row) sample
+            currentCr := lastCrReg
           }
         } .otherwise { // Odd row
-          // currentCb and currentCr already defaulted to lastCbReg/lastCrReg
+          currentCb := lastCbReg // Use Cb/Cr from the last (even_col, even_row) sample
+          currentCr := lastCrReg
         }
       }
     }
@@ -107,10 +119,17 @@ class ChromaSubsampler(
     when( (io.mode === ChromaSubsamplingMode.CHROMA_444) ||
           (io.mode === ChromaSubsamplingMode.CHROMA_422 && (pixelCounter % 2.U === 0.U)) ||
           (io.mode === ChromaSubsamplingMode.CHROMA_420 && (pixelCounter % 2.U === 0.U) && (lineCounter % 2.U === 0.U)) ) {
-      lastCbReg := io.dataIn.bits.cb
-      lastCrReg := io.dataIn.bits.cr
+      lastCbReg := io.dataIn.bits.cb // Changed
+      lastCrReg := io.dataIn.bits.cr // Changed
     }
   } .elsewhen(io.dataOut.fire) { // Output was consumed by the downstream module
     validReg := false.B // Output registers are now free
   }
 }
+
+```
+
+
+#### Short summary: 
+
+empty definition using pc, found symbol in pc: `<none>`.
