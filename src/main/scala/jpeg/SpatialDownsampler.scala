@@ -5,7 +5,7 @@ import chisel3.util._
 
 class SpatialDownsampler(width: Int, height: Int, factor: Int) extends Module {
   require(width > 0 && height > 0)
-  require(factor == 2 || factor == 4 || factor == 8)
+  require(factor == 1 || factor == 2 || factor == 4 || factor == 8)
 
   val io = IO(new Bundle {
     // Pass through frame control signals
