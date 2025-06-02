@@ -1,3 +1,17 @@
+error id: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/main/scala/jpeg/RGB2YCbCr.scala:`<none>`.
+file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/main/scala/jpeg/RGB2YCbCr.scala
+empty definition using pc, found symbol in pc: `<none>`.
+empty definition using semanticdb
+empty definition using fallback
+non-local guesses:
+	 -chisel3/Int#
+	 -chisel3/util/Int#
+	 -Int#
+	 -scala/Predef.Int#
+offset: 604
+uri: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/main/scala/jpeg/RGB2YCbCr.scala
+text:
+```scala
 package Chroma_Subsampling_Image_Compressor
 
 import chisel3._
@@ -8,7 +22,7 @@ object RGB2YCbCrUtils {
    * Fixed-point model for converting 8-bit RGB values into 8-bit YCbCr.
    *
    * The coefficients (77, 150, 29, etc.) approximate the standard
-   * RGB -> YCbCr transform when scaled by 2⁸, and the offsets/bias (128)
+   * RGB→YCbCr transform when scaled by 2⁸, and the offsets/bias (128)
    * center the chroma channels.
    *
    * @param r_in  Red channel [0..255]
@@ -16,7 +30,7 @@ object RGB2YCbCrUtils {
    * @param b_in  Blue channel [0..255]
    * @return      Tuple (Y, Cb, Cr), each clamped to [0..255]
    */
-  def rgbToYCbCr(r_in: Int, g_in: Int, b_in: Int): (Int, Int, Int) = {
+  def rgbToYCbCr(r_in: Int, g_in: Int, b_in: In@@t): (Int, Int, Int) = {
     val R = r_in
     val G = g_in
     val B = b_in
@@ -42,3 +56,10 @@ object RGB2YCbCrUtils {
     (y_final, cb_final, cr_final)
   }
 }
+
+```
+
+
+#### Short summary: 
+
+empty definition using pc, found symbol in pc: `<none>`.
