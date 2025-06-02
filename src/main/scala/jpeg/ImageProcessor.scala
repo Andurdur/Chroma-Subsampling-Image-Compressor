@@ -1,11 +1,8 @@
-// Should be in file: src/main/scala/jpeg/ImageProcessor.scala
 package jpeg 
 
 import chisel3._
 import chisel3.util._
-// Import specific components needed from Chroma_Subsampling_Image_Compressor
 import Chroma_Subsampling_Image_Compressor.{ChromaSubsampler, SpatialDownsampler, PixelBundle, PixelYCbCrBundle}
-// RGB2YCbCr is assumed to be in the current 'jpeg' package
 
 /**
  * Parameters for the RGB -> YCbCr -> Chroma Subsample -> Spatial Downsample pipeline.
@@ -19,7 +16,6 @@ case class ImageProcessorParams(
   width: Int,
   height: Int,
   factor: Int,
-  // chromaMode: ChromaSubsamplingMode.Type, // REMOVED
   chromaParamA: Int,
   chromaParamB: Int
 ) {
@@ -43,7 +39,7 @@ class ImageProcessor(p: ImageProcessorParams) extends Module {
   val fixedInputBitWidth = 8 // Assuming 8-bit components for sub-modules
 
   // Stage 1: RGB to YCbCr conversion
-  val rgb2ycbcr = Module(new RGB2YCbCr()) // RGB2YCbCr is in 'jpeg' package
+  val rgb2ycbcr = Module(new RGB2YCbCr())
   rgb2ycbcr.io.in <> io.in
 
   // Stage 2: Chroma subsampling
@@ -55,7 +51,6 @@ class ImageProcessor(p: ImageProcessorParams) extends Module {
     param_a = p.chromaParamA,
     param_b = p.chromaParamB
   ))
-  // chroma.io.mode := p.chromaMode // REMOVED - Mode is set by constructor params
   chroma.io.dataIn <> rgb2ycbcr.io.out
 
   // Stage 3: Spatial downsampling

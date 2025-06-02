@@ -3,9 +3,6 @@ package Chroma_Subsampling_Image_Compressor
 import chisel3._
 import chisel3.util._
 
-// Assuming PixelYCbCrBundle is defined in this package (e.g., in PixelBundle.scala)
-// and has y, cb, cr fields, each UInt(8.W).
-
 class ColorQuantizer(
     val yTargetBits: Int,
     val cbTargetBits: Int,
@@ -20,7 +17,6 @@ class ColorQuantizer(
   val io = IO(new Bundle {
     val in = Flipped(Decoupled(new PixelYCbCrBundle()))
     val out = Decoupled(new PixelYCbCrBundle())
-    // val mode = Input(QuantizationMode()) // REMOVED: Mode is now set by constructor parameters
   })
 
   val y_quantized_reg  = Reg(UInt(originalBitWidth.W))

@@ -1,4 +1,4 @@
-package jpeg // This file is in the jpeg package
+package jpeg 
 
 import chisel3._
 import chisel3.util._
@@ -9,19 +9,14 @@ import org.scalatest.matchers.should.Matchers
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.MutableImage
 import com.sksamuel.scrimage.nio.PngWriter
-import com.sksamuel.scrimage.color.RGBColor // For creating colors for Scrimage
+import com.sksamuel.scrimage.color.RGBColor
 
 import java.io.File
 import java.awt.image.BufferedImage
 import scala.collection.mutable.ListBuffer
 
-// Import necessary components from the Chroma_Subsampling_Image_Compressor package
 import Chroma_Subsampling_Image_Compressor.{ColorQuantizer, PixelYCbCrBundle} 
-// Assuming YCbCrUtils contains ycbcr2rgb and is accessible.
-// If YCbCrUtils is in Chroma_Subsampling_Image_Compressor:
 import Chroma_Subsampling_Image_Compressor.YCbCrUtils.ycbcr2rgb
-// If YCbCrUtils is in jpeg (like the YCbCrUtils object within RGB2YCbCr.scala):
-// import jpeg.YCbCrUtils.ycbcr2rgb // Uncomment this and comment above if YCbCrUtils is in jpeg package
 
 class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
 

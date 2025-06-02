@@ -3,8 +3,6 @@ package Chroma_Subsampling_Image_Compressor
 import chisel3._
 import chisel3.util._
 
-// PixelYCbCrBundle is assumed to be defined in this package (e.g., in PixelBundle.scala)
-
 class ChromaSubsampler(
     val imageWidth: Int,
     val imageHeight: Int,
@@ -21,7 +19,6 @@ class ChromaSubsampler(
 
   val io = IO(new Bundle {
     val dataIn = Flipped(Decoupled(new PixelYCbCrBundle()))
-    // val mode = Input(ChromaSubsamplingMode()) // REMOVED
     val dataOut = Decoupled(new PixelYCbCrBundle())
   })
 

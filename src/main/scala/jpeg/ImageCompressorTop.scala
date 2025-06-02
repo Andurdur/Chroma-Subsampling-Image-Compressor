@@ -1,11 +1,9 @@
-// Should be in file: src/main/scala/jpeg/ImageCompressorTop.scala
 package jpeg
 
 import chisel3._
 import chisel3.util.{Decoupled, Queue} 
 import Chroma_Subsampling_Image_Compressor._ 
 
-// ProcessingStep enum is defined in this file
 object ProcessingStep extends ChiselEnum {
   val NoOp, SpatialSampling, ColorQuantization, ChromaSubsampling = Value
 }
@@ -14,9 +12,8 @@ class ImageCompressorTop(
     width: Int,
     height: Int,
     // Parameters for specific operations
-    // chromaModeConfig: ChromaSubsamplingMode.Type, // REMOVED
-    chroma_param_a_config: Int, // New: J:a:b 'a' parameter (4, 2, or 1)
-    chroma_param_b_config: Int, // New: J:a:b 'b' parameter (equal to 'a', or 0)
+    chroma_param_a_config: Int, // J:a:b 'a' parameter (4, 2, or 1)
+    chroma_param_b_config: Int, // J:a:b 'b' parameter (equal to 'a', or 0)
     yTargetQuantBitsConfig: Int,
     cbTargetQuantBitsConfig: Int,
     crTargetQuantBitsConfig: Int,
@@ -56,12 +53,10 @@ class ImageCompressorTop(
     imageWidth = width, 
     imageHeight = height,
     bitWidth = fixedInputBitWidth,
-    param_a = chroma_param_a_config, // Pass new integer parameter
-    param_b = chroma_param_b_config  // Pass new integer parameter
+    param_a = chroma_param_a_config, 
+    param_b = chroma_param_b_config  
   ))
 
-  // Assign fixed configurations to sub-modules (Chroma mode is now set by constructor params)
-  // chroma.io.mode := chromaModeConfig // REMOVED
   spatial.io.sof := io.sof 
   spatial.io.eol := io.eol
 

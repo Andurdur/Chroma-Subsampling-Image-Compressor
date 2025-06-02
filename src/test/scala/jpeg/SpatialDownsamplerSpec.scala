@@ -1,4 +1,4 @@
-package jpeg // Assuming this file is in the jpeg package
+package jpeg 
 
 import chisel3._
 import chisel3.util._
@@ -10,12 +10,8 @@ import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.MutableImage
 import com.sksamuel.scrimage.pixels.Pixel
 import com.sksamuel.scrimage.nio.PngWriter
-
-// Import necessary components from Chroma_Subsampling_Image_Compressor package
 import Chroma_Subsampling_Image_Compressor.{SpatialDownsampler, PixelYCbCrBundle} 
-// YCbCrUtils is assumed to be in the jpeg package (e.g., within RGB2YCbCr.scala)
 import jpeg.YCbCrUtils.ycbcr2rgb
-// ImageProcessor, ImageProcessorParams, PixelBundle are in the jpeg package
 
 class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
   behavior of "SpatialDownsampler"
@@ -48,13 +44,116 @@ class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with
       }
     }
   }
-  // ... (other existing unit tests for SpatialDownsampler) ...
 
+  it should "handle back-pressure correctly" in {
+    test(new SpatialDownsampler(4, 4, 2)) { dut =>
+      dut.io.out.ready.poke(false.B)
+      dut.clock.step() 
+      dut.io.in.ready.peek().litToBoolean shouldBe false
+
+      dut.io.out.ready.poke(true.B)
+      dut.clock.step() 
+      dut.io.in.ready.peek().litToBoolean shouldBe true
+    }
+  }
+
+  it should "support factor 4 on 8×8 data" in {
+    val size = 8
+    val expected = (for {
+      row <- 0 until size if row % 4 == 0
+      col <- 0 until size if col % 4 == 0
+    } yield row * size + col).toSeq
+
+    test(new SpatialDownsampler(size, size, 4)) { dut =>
+      dut.io.out.ready.poke(true.B)
+      var inIdx = 0
+      var outCount = 0
+      val totalIn = size * size
+
+      while (outCount < expected.size) {
+        dut.io.in.valid.poke(inIdx < totalIn && dut.io.in.ready.peek().litToBoolean)
+        if (dut.io.in.valid.peek().litToBoolean) {
+          dut.io.in.bits.y.poke(inIdx.U)
+          dut.io.in.bits.cb.poke((inIdx * 2).U)
+          dut.io.in.bits.cr.poke((inIdx * 3).U)
+          inIdx += 1
+        }
+        if (dut.io.out.valid.peek().litToBoolean) {
+          dut.io.out.bits.y.peek().litValue.toInt shouldBe expected(outCount)
+          outCount += 1
+        }
+        dut.clock.step()
+      }
+    }
+  }
+
+  it should "support factor 8 on 16×16 data" in {
+    val size = 16
+    val expected = (for {
+      row <- 0 until size if row % 8 == 0
+      col <- 0 until size if col % 8 == 0
+    } yield row * size + col).toSeq
+
+    test(new SpatialDownsampler(size, size, 8)) { dut =>
+      dut.io.out.ready.poke(true.B)
+      var inIdx = 0
+      var outCount = 0
+      val totalIn = size * size
+
+      while (outCount < expected.size) {
+        dut.io.in.valid.poke(inIdx < totalIn && dut.io.in.ready.peek().litToBoolean)
+        if (dut.io.in.valid.peek().litToBoolean) {
+          dut.io.in.bits.y.poke(inIdx.U)
+          dut.io.in.bits.cb.poke((inIdx + 1).U)
+          dut.io.in.bits.cr.poke((inIdx + 2).U)
+          inIdx += 1
+        }
+        if (dut.io.out.valid.peek().litToBoolean) {
+          dut.io.out.bits.y.peek().litValue.toInt shouldBe expected(outCount)
+          outCount += 1
+        }
+        dut.clock.step()
+      }
+    }
+  }
+
+  it should "handle non-power-of-two dimensions" in {
+    val width = 5; val height = 3; val factor = 2
+    val expected = Seq(0, 2, 4, 10, 12, 14)
+
+    test(new SpatialDownsampler(width, height, factor)) { dut =>
+      dut.io.out.ready.poke(true.B)
+      var inIdx = 0
+      var outCount = 0
+      val totalIn = width * height
+
+      while (outCount < expected.size) {
+        dut.io.in.valid.poke(inIdx < totalIn && dut.io.in.ready.peek().litToBoolean)
+        if (dut.io.in.valid.peek().litToBoolean) {
+          dut.io.in.bits.y.poke(inIdx.U)
+          dut.io.in.bits.cb.poke((10 + inIdx).U)
+          dut.io.in.bits.cr.poke((20 + inIdx).U)
+          inIdx += 1
+        }
+        if (dut.io.out.valid.peek().litToBoolean) {
+          dut.io.out.bits.y.peek().litValue.toInt shouldBe expected(outCount)
+          outCount += 1
+        }
+        dut.clock.step()
+      }
+    }
+  }
+
+  it should "reject unsupported factors" in {
+    intercept[IllegalArgumentException] {
+      new SpatialDownsampler(4, 4, 3)
+    }
+  }
 
   behavior of "ImageProcessor Integration with SpatialDownsampler" 
   
   it should "read a 16×16 PNG, process with 4:2:0 chroma + 2×2 spatial downsample, and write an 8×8 color PNG" in {
-    val input = ImageProcessorModel.readImage("./test_images/in16x16.png") // ImageProcessorModel from jpeg package
+    val input = ImageProcessorModel.readImage("./test_images/in16x16.png") 
     val w = input.width
     val h = input.height
 
@@ -70,17 +169,15 @@ class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with
     val outH    = h / spatialFactor
     val totalO  = outW * outH
     
-    // Updated ImageProcessorParams instantiation
-    val params = ImageProcessorParams( // ImageProcessorParams from jpeg package
+    val params = ImageProcessorParams( 
       width        = w,
       height       = h,
       factor       = spatialFactor,
-      // chromaMode= ChromaSubsamplingMode.CHROMA_420, // REMOVED
       chromaParamA = 2, // For 4:2:0
       chromaParamB = 0  // For 4:2:0
     )
 
-    test(new ImageProcessor(params)) { dut => // ImageProcessor is from jpeg package
+    test(new ImageProcessor(params)) { dut => 
       dut.io.out.ready.poke(true.B)
       dut.io.sof.poke(true.B)   
       dut.io.eol.poke(false.B)  
@@ -89,7 +186,7 @@ class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with
       var outIdx = 0
       val buf = new java.awt.image.BufferedImage(outW, outH, java.awt.image.BufferedImage.TYPE_INT_RGB)
 
-      var timeoutCycles = (w * h * 5) + 2000 // Generous timeout
+      var timeoutCycles = (w * h * 5) + 2000
 
       while (outIdx < totalO && timeoutCycles > 0) {
         val canPush = inIdx < simplePixels.length && dut.io.in.ready.peek().litToBoolean

@@ -4,15 +4,11 @@ import chisel3._
 import chiseltest._
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.MutableImage
-import com.sksamuel.scrimage.color.RGBColor // Import RGBColor directly
+import com.sksamuel.scrimage.color.RGBColor 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
-import java.awt.{Color => AwtColor} // Using java.awt.Color for ImmutableImage.filled
-
-// Imports from your project structure
-// ChromaSubsamplingMode enum is no longer used by ImageCompressorTop for parameterization at this level
+import java.awt.{Color => AwtColor}
 import Chroma_Subsampling_Image_Compressor.{PixelBundle, PixelYCbCrBundle}
-// ProcessingStep enum is defined in ImageCompressorTop.scala in the jpeg package
 
 
 /**
@@ -27,9 +23,8 @@ object ImageCompressionApp extends App {
       inputImagePath: String,
       outputImagePath: String,
       // Specific operation configs
-      // chromaModeToUse: ChromaSubsamplingMode.Type, // REMOVED
-      chromaParamA: Int, // New J:a:b 'a' parameter
-      chromaParamB: Int, // New J:a:b 'b' parameter
+      chromaParamA: Int, // J:a:b 'a' parameter
+      chromaParamB: Int, // J:a:b 'b' parameter
       yTargetBits: Int,
       cbTargetBits: Int,
       crTargetBits: Int,
@@ -41,7 +36,6 @@ object ImageCompressionApp extends App {
   ): Unit = {
 
     println(s"Reading image from: $inputImagePath")
-    // Assuming ImageProcessorModel is in the same 'jpeg' package.
     val inputImage: ImmutableImage = ImageProcessorModel.readImage(inputImagePath)
     val imageWidth = inputImage.width
     val imageHeight = inputImage.height
@@ -68,7 +62,6 @@ object ImageCompressionApp extends App {
             new jpeg.ImageCompressorTop( 
                 imageWidth, 
                 imageHeight, 
-                // chromaModeToUse, // REMOVED
                 chromaParamA,    // Pass J:a:b 'a'
                 chromaParamB,    // Pass J:a:b 'b'
                 yTargetBits,
@@ -220,7 +213,6 @@ object ImageCompressionApp extends App {
 
   val outputBaseDirName = "APP_OUTPUT" 
   val pipelineOrderString = s"order-${op1_choice.toString.split('.').last.take(2)}-${op2_choice.toString.split('.').last.take(2)}-${op3_choice.toString.split('.').last.take(2)}"
-  // Updated outputFileNameSuffix for new chroma params
   val outputFileNameSuffix = s"chroma4-${selectedChromaParamA}-${selectedChromaParamB}_Y${yTargetQuantBits}Cb${cbTargetQuantBits}Cr${crTargetQuantBits}_sf${selectedSpatialFactor}_${pipelineOrderString}"
   val outputPath = s"$outputBaseDirName/${imageName}_processed_${outputFileNameSuffix}.png"
 
@@ -236,7 +228,6 @@ object ImageCompressionApp extends App {
     processImage(
       inputPath,
       outputPath,
-      //selectedChromaMode, // REMOVED
       selectedChromaParamA,
       selectedChromaParamB,
       yTargetQuantBits,

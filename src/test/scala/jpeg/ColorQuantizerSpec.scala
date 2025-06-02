@@ -1,4 +1,4 @@
-package jpeg // This file is in the jpeg package
+package jpeg 
 
 import chisel3._
 import chisel3.util._
@@ -7,7 +7,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.collection.mutable.ListBuffer
 
-// Import necessary components from the Chroma_Subsampling_Image_Compressor package
 import Chroma_Subsampling_Image_Compressor.{ColorQuantizer, PixelYCbCrBundle}
 
 class ColorQuantizerSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
@@ -70,7 +69,6 @@ class ColorQuantizerSpec extends AnyFlatSpec with ChiselScalatestTester with Mat
                 originalBitWidth = originalBitWidth))
         .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         
-        // dut.io.mode.poke(...) // Mode is no longer an IO, it's set by constructor
         dut.io.in.valid.poke(false.B)
         dut.io.out.ready.poke(true.B) 
         dut.clock.step(2) 
