@@ -165,7 +165,7 @@ class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with
   }
   it should "read a 16×16 PNG, process 4:2:0 + 2×2 downsample, and write an 8×8 color PNG" in {
     // 1) Read input RGB image
-    val input = ImmutableImage.loader().fromFile("./test_images/in16x16.png")
+    val input = ImageProcessorModel.readImage("./test_images/in16x16.png")
     val w = input.width
     val h = input.height
     val totalI_spec = w * h // Renamed to avoid conflict if totalI is used later
@@ -230,8 +230,6 @@ class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with
         dut.io.in.valid.poke(canPush)
         if (canPush) {
           val rgbTuple = simplePixels(inIdx)
-          //debug
-          println(s"Testbench Input: Poking pixel index $inIdx with RGB(${rgbTuple._1}, ${rgbTuple._2}, ${rgbTuple._3})") // This will use the (hopefully correct) tuple
           dut.io.in.bits.r.poke(rgbTuple._1.U)
           dut.io.in.bits.g.poke(rgbTuple._2.U)
           dut.io.in.bits.b.poke(rgbTuple._3.U)
@@ -243,12 +241,8 @@ class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with
           val y  = dut.io.out.bits.y.peek().litValue.toInt
           val cb = dut.io.out.bits.cb.peek().litValue.toInt
           val cr = dut.io.out.bits.cr.peek().litValue.toInt
-          //debug
-          println(s"DUT Output to ycbcr2rgb: Y=$y, Cb=$cb, Cr=$cr")
           // reconstruct RGB and store
           val (r,g,b) = ycbcr2rgb(y, cb, cr)
-          //debug
-          println(s"RGB from ycbcr2rgb for outIdx $outIdx (to be written to image): R=$r, G=$g, B=$b")
           // Calculate correct 2D coordinates for the output image
           val currentOutX = outIdx % outW // Column in the output image
           val currentOutY = outIdx / outW // Row in the output image
@@ -269,7 +263,7 @@ class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with
     // wrap the mutated BufferedImage back into Scrimage
     val img: ImmutableImage = ImmutableImage.wrapAwt(buf)
     // 4) Write 8×8 color PNG
-    img.output(PngWriter.NoCompression, new java.io.File("./output_images/out8x8.png"))
+    ImageProcessorModel.writeImage(img, "./output_images/out16x16.png")
     println("Wrote out8x8.png — check that the 2×2‐averaged color blocks match the 16×16 input.")
     }
   }
