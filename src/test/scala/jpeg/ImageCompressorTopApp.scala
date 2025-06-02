@@ -4,13 +4,15 @@ import chisel3._
 import chiseltest._
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.MutableImage
-import com.sksamuel.scrimage.color.RGBColor 
+import com.sksamuel.scrimage.color.RGBColor // Import RGBColor directly
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
 import java.awt.{Color => AwtColor} // Using java.awt.Color for ImmutableImage.filled
 
 // Imports from your project structure
-import Chroma_Subsampling_Image_Compressor.{PixelBundle, PixelYCbCrBundle, ChromaSubsamplingMode, QuantizationMode}
+// ChromaSubsamplingMode enum is no longer used by ImageCompressorTop for parameterization at this level
+import Chroma_Subsampling_Image_Compressor.{PixelBundle, PixelYCbCrBundle}
+// ProcessingStep enum is defined in ImageCompressorTop.scala in the jpeg package
 
 
 /**
@@ -24,27 +26,41 @@ object ImageCompressionApp extends App {
   def processImage(
       inputImagePath: String,
       outputImagePath: String,
-      chromaModeToUse: ChromaSubsamplingMode.Type, // Parameter for Chroma mode
-      quantModeToUse: QuantizationMode.Type,     // Parameter for Quantization mode
-      spatialFactorToUse: Int                  // Parameter for Spatial downsampling factor
+      // Specific operation configs
+      // chromaModeToUse: ChromaSubsamplingMode.Type, // REMOVED
+      chromaParamA: Int, // New J:a:b 'a' parameter
+      chromaParamB: Int, // New J:a:b 'b' parameter
+      yTargetBits: Int,
+      cbTargetBits: Int,
+      crTargetBits: Int,
+      spatialFactorToUse: Int,
+      // Pipeline order configuration
+      op1: ProcessingStep.Type,
+      op2: ProcessingStep.Type,
+      op3: ProcessingStep.Type
   ): Unit = {
 
     println(s"Reading image from: $inputImagePath")
+    // Assuming ImageProcessorModel is in the same 'jpeg' package.
     val inputImage: ImmutableImage = ImageProcessorModel.readImage(inputImagePath)
     val imageWidth = inputImage.width
     val imageHeight = inputImage.height
 
     println(s"Input image dimensions: ${imageWidth}x$imageHeight")
 
+    val finalOutputWidth = if (op1 == ProcessingStep.SpatialSampling || op2 == ProcessingStep.SpatialSampling || op3 == ProcessingStep.SpatialSampling) imageWidth / spatialFactorToUse else imageWidth
+    val finalOutputHeight = if (op1 == ProcessingStep.SpatialSampling || op2 == ProcessingStep.SpatialSampling || op3 == ProcessingStep.SpatialSampling) imageHeight / spatialFactorToUse else imageHeight
+    
     if (imageWidth % spatialFactorToUse != 0 || imageHeight % spatialFactorToUse != 0) {
-      println(s"[ERROR] Image dimensions (${imageWidth}x$imageHeight) must be divisible by spatialFactor ($spatialFactorToUse).")
-      return
+        if (op1 == ProcessingStep.SpatialSampling || op2 == ProcessingStep.SpatialSampling || op3 == ProcessingStep.SpatialSampling) {
+             println(s"[WARN] Image dimensions (${imageWidth}x$imageHeight) are not perfectly divisible by spatialFactor ($spatialFactorToUse). SpatialDownsampler might truncate.")
+        }
     }
 
-    val outputWidth = imageWidth / spatialFactorToUse
-    val outputHeight = imageHeight / spatialFactorToUse
-    println(s"Output image dimensions will be: ${outputWidth}x$outputHeight")
-    println(s"Processing with ChromaMode: $chromaModeToUse, QuantMode: $quantModeToUse, SpatialFactor: $spatialFactorToUse")
+    println(s"Expected output image dimensions will be: ${finalOutputWidth}x$finalOutputHeight")
+    println(s"Processing with pipeline order: $op1 -> $op2 -> $op3")
+    println(s"  Chroma Subsampling (J:a:b format, J=4): 4:$chromaParamA:$chromaParamB")
+    println(s"  QuantBits (Y/Cb/Cr): $yTargetBits/$cbTargetBits/$crTargetBits, SpatialFactor: $spatialFactorToUse")
 
     val outputPixelData = ArrayBuffer[(Int, Int, Int)]()
 
@@ -52,30 +68,34 @@ object ImageCompressionApp extends App {
             new jpeg.ImageCompressorTop( 
                 imageWidth, 
                 imageHeight, 
-                chromaModeToUse,  
-                quantModeToUse,   
-                spatialFactorToUse 
+                // chromaModeToUse, // REMOVED
+                chromaParamA,    // Pass J:a:b 'a'
+                chromaParamB,    // Pass J:a:b 'b'
+                yTargetBits,
+                cbTargetBits,
+                crTargetBits,
+                spatialFactorToUse,
+                op1, 
+                op2,
+                op3
             ),
             Seq(WriteVcdAnnotation) 
         ) { dut => 
       
-      // Initialize DUT IOs that are driven by the testbench BEFORE forking threads
-      dut.io.out.ready.poke(true.B) // Consumer is ALWAYS ready to accept output
-      dut.io.in.valid.poke(false.B)  // No valid input initially
+      dut.io.out.ready.poke(true.B) 
+      dut.io.in.valid.poke(false.B)  
       dut.io.sof.poke(false.B)
       dut.io.eol.poke(false.B)
-      dut.clock.step(1)             // Step clock to establish initial state after pokes
+      dut.clock.step(1)             
 
       val inputDriver = fork {
         println("Input driver thread started.")
         
         for (y <- 0 until imageHeight) {
           for (x <- 0 until imageWidth) {
-            // Set SOF for the very first pixel
             if (x == 0 && y == 0) {
               dut.io.sof.poke(true.B)
             }
-            // Set EOL for the last pixel of a line
             if (x == imageWidth - 1) {
               dut.io.eol.poke(true.B)
             }
@@ -86,25 +106,17 @@ object ImageCompressionApp extends App {
             dut.io.in.bits.b.poke(pixel.blue().U)
             dut.io.in.valid.poke(true.B)
             
-            // Wait until DUT accepts the input
             while (!dut.io.in.ready.peek().litToBoolean) {
               dut.clock.step(1)
             }
-            // At this point, DUT's in.ready was true, so input was (or is about to be) consumed in this cycle
             
-            dut.clock.step(1) // Cycle where input is consumed
+            dut.clock.step(1) 
 
-            // De-assert signals that are pulse-like or after consumption
             dut.io.in.valid.poke(false.B) 
-            if (x == 0 && y == 0) {
-              dut.io.sof.poke(false.B)
-            }
-            if (x == imageWidth - 1) {
-              dut.io.eol.poke(false.B)
-            }
+            if (x == 0 && y == 0) dut.io.sof.poke(false.B)
+            if (x == imageWidth - 1) dut.io.eol.poke(false.B)
           }
         }
-        // Ensure valid is low at the very end if not already
         dut.io.in.valid.poke(false.B)
         dut.io.sof.poke(false.B)
         dut.io.eol.poke(false.B)
@@ -112,21 +124,18 @@ object ImageCompressionApp extends App {
       }
 
       println("Output collection started.")
-      // io.out.ready is kept true by the initial poke. No need to poke it in the loop.
       
       var collectedPixels = 0
-      val expectedOutputPixels = outputWidth * outputHeight
-      var timeoutCycles = expectedOutputPixels * 15 + 3000 
+      val expectedOutputPixels = finalOutputWidth * finalOutputHeight
+      var timeoutCycles = expectedOutputPixels * 20 + 5000 
       
       while (collectedPixels < expectedOutputPixels && timeoutCycles > 0) {
-        // dut.io.out.ready.poke(true.B) // REMOVED: Not needed if consumer is always ready
-
         if (dut.io.out.valid.peek().litToBoolean) {
-          val y = dut.io.out.bits.y.peek().litValue.toInt
-          val cb = dut.io.out.bits.cb.peek().litValue.toInt
-          val cr = dut.io.out.bits.cr.peek().litValue.toInt
+          val y_val = dut.io.out.bits.y.peek().litValue.toInt
+          val cb_val = dut.io.out.bits.cb.peek().litValue.toInt
+          val cr_val = dut.io.out.bits.cr.peek().litValue.toInt
 
-          val (r_out, g_out, b_out) = YCbCrUtils.ycbcr2rgb(y, cb, cr) 
+          val (r_out, g_out, b_out) = YCbCrUtils.ycbcr2rgb(y_val, cb_val, cr_val) 
           outputPixelData.append((r_out, g_out, b_out))
           collectedPixels += 1
         }
@@ -140,20 +149,20 @@ object ImageCompressionApp extends App {
       println(s"Output collection finished. Collected ${outputPixelData.length} pixels.")
       
       inputDriver.join()
-    }
+    } 
 
-    if (outputPixelData.length != outputWidth * outputHeight) {
-      println(s"[ERROR] Mismatch in output pixel count. Expected: ${outputWidth * outputHeight}, Got: ${outputPixelData.length}")
+    if (outputPixelData.length != finalOutputWidth * finalOutputHeight) {
+      println(s"[ERROR] Mismatch in output pixel count. Expected: ${finalOutputWidth * finalOutputHeight}, Got: ${outputPixelData.length}")
     } else {
       println("Successfully collected all expected output pixels.")
     }
 
     println("Constructing output image...")
     val transparentBlackAwt = new AwtColor(0, 0, 0, 0) 
-    val outputMutableImage = ImmutableImage.filled(outputWidth, outputHeight, transparentBlackAwt).copy()
-    for (y <- 0 until outputHeight) {
-      for (x <- 0 until outputWidth) {
-        val pixelIndex = y * outputWidth + x
+    val outputMutableImage = ImmutableImage.filled(finalOutputWidth, finalOutputHeight, transparentBlackAwt).copy()
+    for (y <- 0 until finalOutputHeight) {
+      for (x <- 0 until finalOutputWidth) {
+        val pixelIndex = y * finalOutputWidth + x
         if (pixelIndex < outputPixelData.length) {
           val (r, g, b) = outputPixelData(pixelIndex)
           outputMutableImage.setColor(x, y, new com.sksamuel.scrimage.color.RGBColor(r, g, b, 255))
@@ -169,8 +178,7 @@ object ImageCompressionApp extends App {
   }
 
   // --- Main execution ---
-  // Define your input image path here
-  val inputPath = "test_images/in128x128.png" // Example: ensure this image exists
+  val inputPath = "test_images/in128x128.png" 
   val imageName = new File(inputPath).getName.takeWhile(_ != '.')
   
   println("----------------------------------------------------")
@@ -179,36 +187,43 @@ object ImageCompressionApp extends App {
   println(s"Input Image: $inputPath")
   println("----------------------------------------------------")
   
-  // 1. CHROMA SUBSAMPLING MODE
-  // Options:
-  //   ChromaSubsamplingMode.CHROMA_444  (No chroma subsampling)
-  //   ChromaSubsamplingMode.CHROMA_422  (Horizontal subsampling, Cb/Cr sampled at even columns)
-  //   ChromaSubsamplingMode.CHROMA_420  (Horizontal & Vertical, Cb/Cr at even_col, even_row)
-  val selectedChromaMode: ChromaSubsamplingMode.Type = ChromaSubsamplingMode.CHROMA_420
-  println(s"Selected Chroma Subsampling Mode: $selectedChromaMode")
+  // 1. CHROMA SUBSAMPLING PARAMETERS (J:a:b format, J=4 is fixed)
+  // param_a: Horizontal sampling reference (4, 2, or 1)
+  //   4 -> 4:4:x (no horizontal Cb/Cr subsampling relative to Y)
+  //   2 -> 4:2:x (Cb/Cr sampled every 2nd pixel horizontally)
+  //   1 -> 4:1:x (Cb/Cr sampled every 4th pixel horizontally)
+  // param_b: Vertical sampling reference (must be equal to param_a or 0)
+  //   param_b == param_a -> No vertical subsampling of chroma lines (e.g., 4:4:4, 4:2:2, 4:1:1)
+  //   param_b == 0       -> Chroma lines subsampled by 2 (e.g., 4:4:0 (uncommon), 4:2:0, 4:1:0 (uncommon))
+  val selectedChromaParamA: Int = 1 // Example: for 4:4:4
+  val selectedChromaParamB: Int = 0 // Example: for 4:4:4 (param_b == param_a)
+  // For 4:2:2, use: selectedChromaParamA = 2, selectedChromaParamB = 2
+  // For 4:2:0, use: selectedChromaParamA = 2, selectedChromaParamB = 0
+  println(s"Selected Chroma Subsampling (J:a:b): 4:$selectedChromaParamA:$selectedChromaParamB")
 
-  // 2. COLOR QUANTIZATION MODE
-  // Options:
-  //   QuantizationMode.Q_24BIT  (8-bits for Y, 8-bits for Cb, 8-bits for Cr - No quantization)
-  //   QuantizationMode.Q_16BIT  (Effective bits: Y=6, Cb=5, Cr=5)
-  //   QuantizationMode.Q_8BIT   (Effective bits: Y=3, Cb=3, Cr=2)
-  val selectedQuantMode: QuantizationMode.Type = QuantizationMode.Q_8BIT
-  println(s"Selected Color Quantization Mode: $selectedQuantMode")
+  // 2. COLOR QUANTIZATION TARGET BIT DEPTHS (1-8 bits each)
+  val yTargetQuantBits: Int = 8 
+  val cbTargetQuantBits: Int = 8 
+  val crTargetQuantBits: Int = 8 
+  println(s"Selected Quantization Bits (Y/Cb/Cr): $yTargetQuantBits/$cbTargetQuantBits/$crTargetQuantBits")
 
-  // 3. SPATIAL DOWNSAMPLING FACTOR
-  // Options: 1, 2, 4, or 8
-  // Note: Input image width and height must be divisible by this factor.
-  val selectedSpatialFactor: Int = 1 // Example: no spatial downsampling
+  // 3. SPATIAL DOWNSAMPLING FACTOR (1, 2, 4, or 8)
+  val selectedSpatialFactor: Int = 1 
   println(s"Selected Spatial Downsampling Factor: $selectedSpatialFactor")
+
+  // 4. PIPELINE ORDERING
+  val op1_choice: ProcessingStep.Type = ProcessingStep.SpatialSampling
+  val op2_choice: ProcessingStep.Type = ProcessingStep.ColorQuantization
+  val op3_choice: ProcessingStep.Type = ProcessingStep.ChromaSubsampling
+  println(s"Selected Pipeline Order: $op1_choice -> $op2_choice -> $op3_choice")
   println("----------------------------------------------------")
 
-
-  // Output path is derived from the input name and selected parameters
   val outputBaseDirName = "APP_OUTPUT" 
-  val outputFileNameSuffix = s"chroma${selectedChromaMode.toString.split('.').last}_quant${selectedQuantMode.toString.split('.').last}_sf${selectedSpatialFactor}"
+  val pipelineOrderString = s"order-${op1_choice.toString.split('.').last.take(2)}-${op2_choice.toString.split('.').last.take(2)}-${op3_choice.toString.split('.').last.take(2)}"
+  // Updated outputFileNameSuffix for new chroma params
+  val outputFileNameSuffix = s"chroma4-${selectedChromaParamA}-${selectedChromaParamB}_Y${yTargetQuantBits}Cb${cbTargetQuantBits}Cr${crTargetQuantBits}_sf${selectedSpatialFactor}_${pipelineOrderString}"
   val outputPath = s"$outputBaseDirName/${imageName}_processed_${outputFileNameSuffix}.png"
 
-  // Create output directory if it doesn't exist
   val outputDir = new File(outputBaseDirName) 
   if (!outputDir.exists()) {
     outputDir.mkdirs()
@@ -221,9 +236,16 @@ object ImageCompressionApp extends App {
     processImage(
       inputPath,
       outputPath,
-      selectedChromaMode, 
-      selectedQuantMode,  
-      selectedSpatialFactor 
+      //selectedChromaMode, // REMOVED
+      selectedChromaParamA,
+      selectedChromaParamB,
+      yTargetQuantBits,
+      cbTargetQuantBits,
+      crTargetQuantBits,
+      selectedSpatialFactor,
+      op1_choice, 
+      op2_choice,
+      op3_choice
     )
   }
 }
