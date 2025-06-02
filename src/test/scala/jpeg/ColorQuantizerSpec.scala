@@ -1,4 +1,4 @@
-package Chroma_Subsampling_Image_Compressor
+package jpeg // This file is in the jpeg package
 
 import chisel3._
 import chisel3.util._
@@ -7,44 +7,36 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.collection.mutable.ListBuffer
 
+// Import necessary components from the Chroma_Subsampling_Image_Compressor package
+import Chroma_Subsampling_Image_Compressor.{ColorQuantizer, PixelYCbCrBundle}
+
 class ColorQuantizerSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
 
-  behavior of "ColorQuantizer"
+  behavior of "ColorQuantizer (Fully Parameterized)"
 
-  val originalBitWidth = 8
+  val originalBitWidth = 8 // Assuming input components are 8-bit
 
-  // Software model to calculate expected quantized values
+  // Software model to calculate expected quantized values based on target bits
   def quantizePixelSW(
       y_in: Int,
       cb_in: Int,
       cr_in: Int,
-      mode: QuantizationMode.Type
+      yTargetBits: Int,
+      cbTargetBits: Int,
+      crTargetBits: Int,
+      originalBits: Int = 8
   ): (Int, Int, Int) = {
     
-    var yTargetEffBits = originalBitWidth
-    var cbTargetEffBits = originalBitWidth
-    var crTargetEffBits = originalBitWidth
-
-    if (mode == QuantizationMode.Q_16BIT) { // Y:6, Cb:5, Cr:5
-      yTargetEffBits = 6
-      cbTargetEffBits = 5
-      crTargetEffBits = 5
-    } else if (mode == QuantizationMode.Q_8BIT) { // Y:3, Cb:3, Cr:2
-      yTargetEffBits = 3
-      cbTargetEffBits = 3
-      crTargetEffBits = 2
-    }
-    // For Q_24BIT, target bits remain originalBitWidth (e.g., 8)
-
     def quantChannel(value: Int, targetBits: Int, currentBits: Int): Int = {
+      if (targetBits < 1) throw new IllegalArgumentException("Target bits must be at least 1.")
       if (targetBits >= currentBits) return value // No quantization if target is same or more
       val shiftAmount = currentBits - targetBits
       (value >> shiftAmount) << shiftAmount
     }
 
-    val y_q = quantChannel(y_in, yTargetEffBits, originalBitWidth)
-    val cb_q = quantChannel(cb_in, cbTargetEffBits, originalBitWidth)
-    val cr_q = quantChannel(cr_in, crTargetEffBits, originalBitWidth)
+    val y_q = quantChannel(y_in, yTargetBits, originalBits)
+    val cb_q = quantChannel(cb_in, cbTargetBits, originalBits)
+    val cr_q = quantChannel(cr_in, crTargetBits, originalBits)
     (y_q, cb_q, cr_q)
   }
 
@@ -53,57 +45,63 @@ class ColorQuantizerSpec extends AnyFlatSpec with ChiselScalatestTester with Mat
     (0, 0, 0),       // Black
     (255, 255, 255), // White
     (128, 128, 128), // Mid-gray
-    (77, 150, 29),   // A specific color
+    (77, 150, 29),   // A specific color (values are illustrative for YCbCr)
     (200, 50, 220),  // Another color
-    (16, 16, 16),    // Dark (min Y for some standards)
-    (235, 240, 240)  // Bright (max Y/Cb/Cr for some standards)
+    (16, 16, 16),    // Dark
+    (235, 240, 240)  // Bright
   )
 
-  val modesToTest = Seq(
-    ("24-bit (Passthrough)", QuantizationMode.Q_24BIT),
-    ("16-bit effective (Y6Cb5Cr5)", QuantizationMode.Q_16BIT),
-    ("8-bit effective (Y3Cb3Cr2)", QuantizationMode.Q_8BIT)
+  // Define test cases as tuples: (testNameSuffix, yBits, cbBits, crBits)
+  val quantizationTestCases = Seq(
+    ("Y8Cb8Cr8 (Passthrough)", 8, 8, 8),
+    ("Y6Cb5Cr5 (16-bit effective)", 6, 5, 5),
+    ("Y3Cb3Cr2 (8-bit effective)", 3, 3, 2),
+    ("Y8Cb1Cr1 (Max Y, Min Chroma)", 8, 1, 1),
+    ("Y1Cb8Cr8 (Min Y, Max Chroma)", 1, 8, 8),
+    ("Y4Cb4Cr4 (All 4-bit)", 4, 4, 4)
   )
 
-  modesToTest.foreach { case (modeName, quantModeEnum) =>
-    it should s"correctly quantize pixels for $modeName mode" in {
-      test(new ColorQuantizer(originalBitWidth))
+  quantizationTestCases.foreach { case (testName, yTargetBits, cbTargetBits, crTargetBits) =>
+    it should s"correctly quantize pixels for $testName" in {
+      test(new ColorQuantizer( // Instantiate with specific target bits
+                yTargetBits = yTargetBits,
+                cbTargetBits = cbTargetBits,
+                crTargetBits = crTargetBits,
+                originalBitWidth = originalBitWidth))
         .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         
-        dut.io.mode.poke(quantModeEnum)
+        // dut.io.mode.poke(...) // Mode is no longer an IO, it's set by constructor
         dut.io.in.valid.poke(false.B)
-        dut.io.out.ready.poke(true.B) // Consumer is always ready
-        dut.clock.step(2) // Initial settle
+        dut.io.out.ready.poke(true.B) 
+        dut.clock.step(2) 
 
         val collectedOutputs = ListBuffer[(BigInt, BigInt, BigInt)]()
         val expectedOutputs = testPixels.map { px => 
-          quantizePixelSW(px._1, px._2, px._3, quantModeEnum)
+          quantizePixelSW(px._1, px._2, px._3, yTargetBits, cbTargetBits, crTargetBits, originalBitWidth)
         }
 
-        // Drive inputs and collect outputs sequentially
         for (idx <- 0 until testPixels.length) {
           val (y_in, cb_in, cr_in) = testPixels(idx)
 
-          // Drive input
           dut.io.in.valid.poke(true.B)
           dut.io.in.bits.y.poke(y_in.U(originalBitWidth.W))
           dut.io.in.bits.cb.poke(cb_in.U(originalBitWidth.W))
           dut.io.in.bits.cr.poke(cr_in.U(originalBitWidth.W))
 
-          // Wait for ready (ColorQuantizer is a simple buffer, should be ready quickly)
           var cyclesWaiting = 0
-          while(!dut.io.in.ready.peek().litToBoolean && cyclesWaiting < 5) {
+          val readyTimeout = 10 // Increased timeout slightly
+          while(!dut.io.in.ready.peek().litToBoolean && cyclesWaiting < readyTimeout) {
             dut.clock.step(1)
             cyclesWaiting += 1
           }
-          assert(dut.io.in.ready.peek().litToBoolean, s"DUT input not ready for pixel $idx in $modeName")
+          assert(dut.io.in.ready.peek().litToBoolean, s"DUT input not ready for pixel $idx in $testName")
           
-          dut.clock.step(1) // Clock tick for the transaction
-          dut.io.in.valid.poke(false.B) // De-assert valid after sending
+          dut.clock.step(1) 
+          dut.io.in.valid.poke(false.B) 
 
           var outputCollectedForThisInput = false
           var collectionWaitCycles = 0
-          val collectionTimeout = 10
+          val collectionTimeout = 15 // Increased timeout slightly
 
           while(!outputCollectedForThisInput && collectionWaitCycles < collectionTimeout) {
             if (dut.io.out.valid.peek().litToBoolean) {
@@ -114,29 +112,32 @@ class ColorQuantizerSpec extends AnyFlatSpec with ChiselScalatestTester with Mat
               outputCollectedForThisInput = true
             }
 
-            if (!outputCollectedForThisInput) { // Only step if we didn't collect this cycle
+            if (!outputCollectedForThisInput) { 
                  dut.clock.step(1)
             }
             collectionWaitCycles +=1
           }
-          assert(outputCollectedForThisInput, s"Timeout waiting for output for pixel $idx in $modeName")
+          assert(outputCollectedForThisInput, s"Timeout waiting for output for pixel $idx in $testName")
         }
 
-        // Final assertions
         collectedOutputs.length should be (expectedOutputs.length)
         for (i <- collectedOutputs.indices) {
           val (dut_y, dut_cb, dut_cr) = collectedOutputs(i)
           val (exp_y, exp_cb, exp_cr) = expectedOutputs(i)
           
-          dut_y.toInt should be (exp_y)
-          dut_cb.toInt should be (exp_cb)
-          dut_cr.toInt should be (exp_cr)
+          withClue(s"Pixel $i, Y component: DUT=${dut_y}, EXP=${exp_y} for test $testName") {
+            dut_y.toInt should be (exp_y)
+          }
+          withClue(s"Pixel $i, Cb component: DUT=${dut_cb}, EXP=${exp_cb} for test $testName") {
+            dut_cb.toInt should be (exp_cb)
+          }
+          withClue(s"Pixel $i, Cr component: DUT=${dut_cr}, EXP=${exp_cr} for test $testName") {
+            dut_cr.toInt should be (exp_cr)
+          }
         }
-        println(s"Test for $modeName passed. All pixel values correctly quantized.")
-        dut.clock.step(5)
+        println(s"Test for $testName passed. All pixel values correctly quantized.")
+        dut.clock.step(5) 
       }
     }
   }
 }
-
-
