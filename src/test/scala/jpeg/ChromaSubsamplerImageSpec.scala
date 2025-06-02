@@ -1,4 +1,4 @@
-package Chroma_Subsampling_Image_Compressor
+package jpeg // This file is in the jpeg package
 
 import chisel3._
 import chisel3.util._ 
@@ -9,41 +9,77 @@ import org.scalatest.matchers.should.Matchers
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.MutableImage
 import com.sksamuel.scrimage.nio.PngWriter
-import com.sksamuel.scrimage.color.RGBColor // For creating colors for Scrimage
+import com.sksamuel.scrimage.color.RGBColor 
 
 import java.io.File
 import java.awt.image.BufferedImage
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ListBuffer, ArrayBuffer} // Added ArrayBuffer import
 
-import Chroma_Subsampling_Image_Compressor.YCbCrUtils.ycbcr2rgb
+// Import necessary components from Chroma_Subsampling_Image_Compressor package
+import Chroma_Subsampling_Image_Compressor.{ChromaSubsampler, PixelYCbCrBundle}
+// Assuming YCbCrUtils contains ycbcr2rgb.
+// If YCbCrUtils is in jpeg (like the YCbCrUtils object within RGB2YCbCr.scala):
+import jpeg.YCbCrUtils.ycbcr2rgb
+
 
 class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
 
-  behavior of "ChromaSubsampler with Image Files"
+  behavior of "ChromaSubsampler with Image Files (Fully Parameterized J:a:b in jpeg package)"
 
+  val originalBitWidth = 8
 
   def rgbToYCbCr_fixedPointModel(r_in: Int, g_in: Int, b_in: Int): (Int, Int, Int) = {
-    val R = r_in
-    val G = g_in
-    val B = b_in
-
-
+    val R = math.max(0, math.min(255, r_in))
+    val G = math.max(0, math.min(255, g_in))
+    val B = math.max(0, math.min(255, b_in))
     val yInt  =  77 * R + 150 * G +  29 * B
     val cbInt = -43 * R -  85 * G + 128 * B
     val crInt = 128 * R - 107 * G -  21 * B
-
     def clampUInt8(value: Int): Int = {
-      if (value < 0) 0
-      else if (value > 255) 255
-      else value
+      if (value < 0) 0 else if (value > 255) 255 else value
     }
-    
-    val y_final  = clampUInt8((yInt  + 128) / 256) // Integer division acts like right shift for positive results
+    val y_final  = clampUInt8((yInt  + 128) / 256)
     val cb_final = clampUInt8(((cbInt + 128) / 256) + 128)
     val cr_final = clampUInt8(((crInt + 128) / 256) + 128)
-    
     (y_final, cb_final, cr_final)
   }
+
+  // Software model for chroma subsampling based on J:a:b parameters
+  def subsampleChromaSw(
+      ycbcrData: Seq[(Int, Int, Int)],
+      width: Int, height: Int,
+      param_a: Int, param_b: Int
+  ): Seq[(Int, Int, Int)] = {
+    require(Seq(4,2,1).contains(param_a), "param_a for SW model must be 4, 2, or 1")
+    require(param_b == param_a || param_b == 0, "param_b for SW model must be param_a or 0")
+
+    val hFactor = 4 / param_a
+    val vFactor = if (param_b == 0 && param_a != 0) 2 else 1
+    val output = ArrayBuffer[(Int, Int, Int)]()
+    var lastCb = 0 
+    var lastCr = 0
+
+    for (r <- 0 until height) {
+      for (c <- 0 until width) {
+        val (y, cb, cr) = ycbcrData(r * width + c)
+        var currentCbToOutput = lastCb
+        var currentCrToOutput = lastCr
+
+        val sampleHorizontally = (c % hFactor) == 0
+        val sampleVertically = (r % vFactor) == 0
+
+        if (sampleHorizontally && sampleVertically) {
+          currentCbToOutput = cb
+          currentCrToOutput = cr
+          lastCb = cb 
+          lastCr = cr
+        }
+        output.append((y, currentCbToOutput, currentCrToOutput))
+      }
+    }
+    output.toSeq
+  }
+
 
   def saveRgbDataAsPng(
       filePath: String,
@@ -52,14 +88,15 @@ class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester w
       height: Int
   ): Unit = {
     require(rgbPixelData.length == width * height, "Pixel data length does not match dimensions")
-    val initialAwtImage: BufferedImage = ImmutableImage.filled(width, height, new RGBColor(0, 0, 0, 255).toAWT).awt()
-    val image: MutableImage = new MutableImage(initialAwtImage)
+    val awtImage: BufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
     for (yIdx <- 0 until height) {
       for (xIdx <- 0 until width) {
         val (r, g, b) = rgbPixelData(yIdx * width + xIdx)
-        image.setColor(xIdx, yIdx, new RGBColor(r, g, b, 255))
+        val color = new java.awt.Color(r,g,b).getRGB()
+        awtImage.setRGB(xIdx, yIdx, color)
       }
     }
+    val image = ImmutableImage.fromAwt(awtImage)
     val file = new File(filePath)
     Option(file.getParentFile).foreach(_.mkdirs())
     image.output(PngWriter.MaxCompression, file) 
@@ -67,19 +104,19 @@ class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester w
   }
 
   val inputImagePath = "./test_images/in16x16.png" 
-  val outputDir = "./output_images_chroma"
-  val testBitWidth = 8 
-
-  val modesToTest = Seq(
-    ("444", ChromaSubsamplingMode.CHROMA_444),
-    ("422", ChromaSubsamplingMode.CHROMA_422),
-    ("420", ChromaSubsamplingMode.CHROMA_420)
+  val outputDir = "./APP_OUTPUT/chroma_subsampler_parameterized_tests"
+  
+  val chromaTestCases = Seq(
+    ("444", 4, 4), 
+    ("422", 2, 2), 
+    ("420", 2, 0), 
+    ("411", 1, 1)  
   )
 
-  modesToTest.foreach { case (modeNameSuffix, chromaModeEnum) =>
-    it should s"process an image with Chroma Subsampling Mode $chromaModeEnum ($modeNameSuffix) and save output" in {
+  chromaTestCases.foreach { case (testNameSuffix, paramA, paramB) =>
+    it should s"process an image with Chroma Subsampling 4:$paramA:$paramB ($testNameSuffix) and save output" in {
       
-      println(s"Starting test for mode: $chromaModeEnum ($modeNameSuffix) with image: $inputImagePath")
+      println(s"Starting test for chroma 4:$paramA:$paramB ($testNameSuffix) with image: $inputImagePath")
       val inputImageFile = new File(inputImagePath)
       if (!inputImageFile.exists()) {
         fail(s"Input image not found: $inputImagePath")
@@ -89,37 +126,42 @@ class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester w
       val imageHeight = inputImage.height
       println(s"Read input image: $inputImagePath (${imageWidth}x$imageHeight)")
 
-      val ycbcrInputToDUT = ListBuffer[(Int, Int, Int)]()
+      val ycbcrInputToDUT_list = ListBuffer[(Int, Int, Int)]()
       for (yIdx <- 0 until imageHeight; xIdx <- 0 until imageWidth) {
         val rgb = inputImage.pixel(xIdx,yIdx)
-
-        ycbcrInputToDUT += rgbToYCbCr_fixedPointModel(rgb.red, rgb.green, rgb.blue)
+        ycbcrInputToDUT_list += rgbToYCbCr_fixedPointModel(rgb.red, rgb.green, rgb.blue)
       }
+      val ycbcrInputToDUT = ycbcrInputToDUT_list.toSeq
       val expectedPixelCount = ycbcrInputToDUT.length
-      println(s"Converted input image to YCbCr (software model matching DUT) - $expectedPixelCount pixels.")
+      println(s"Converted input image to YCbCr (software model) - $expectedPixelCount pixels.")
 
-      test(new ChromaSubsampler(imageWidth, imageHeight, testBitWidth))
+      test(new ChromaSubsampler(
+                imageWidth = imageWidth, 
+                imageHeight = imageHeight, 
+                bitWidth = originalBitWidth,
+                param_a = paramA,
+                param_b = paramB
+                ))
         .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         
-        dut.io.mode.poke(chromaModeEnum)
         dut.io.dataIn.valid.poke(false.B)
         dut.io.dataOut.ready.poke(true.B)
         dut.clock.step(5)
 
-        val collectedYCbCrFromDUT = ListBuffer[(BigInt, BigInt, BigInt)]()
+        val collectedYCbCrFromDUT = ListBuffer[(Int, Int, Int)]()
         
         val inputDriver = fork {
-          println(s"DUT ($modeNameSuffix): Driving $expectedPixelCount YCbCr pixels...")
+          println(s"DUT ($testNameSuffix): Driving $expectedPixelCount YCbCr pixels...")
           for (idx <- 0 until expectedPixelCount) {
             val (y_in, cb_in, cr_in) = ycbcrInputToDUT(idx)
             
             dut.io.dataIn.valid.poke(true.B)
-            dut.io.dataIn.bits.y.poke(y_in.U(testBitWidth.W))
-            dut.io.dataIn.bits.cb.poke(cb_in.U(testBitWidth.W))
-            dut.io.dataIn.bits.cr.poke(cr_in.U(testBitWidth.W))
+            dut.io.dataIn.bits.y.poke(y_in.U(originalBitWidth.W))
+            dut.io.dataIn.bits.cb.poke(cb_in.U(originalBitWidth.W))
+            dut.io.dataIn.bits.cr.poke(cr_in.U(originalBitWidth.W))
             
             var cyclesWaiting = 0
-            val readyTimeout = 15 
+            val readyTimeout = 30 
             while(!dut.io.dataIn.ready.peek().litToBoolean && cyclesWaiting < readyTimeout) {
                 dut.clock.step(1)
                 cyclesWaiting += 1
@@ -128,20 +170,20 @@ class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester w
             dut.clock.step(1)
           }
           dut.io.dataIn.valid.poke(false.B)
-          println(s"DUT ($modeNameSuffix): Finished driving pixels.")
+          println(s"DUT ($testNameSuffix): Finished driving pixels.")
         }
 
-        val cyclesPerPixelEstimate = 3 
-        val baseTimeout = imageHeight + 2000 
+        val cyclesPerPixelEstimate = 5 
+        val baseTimeout = imageHeight + 4000 
         val collectionOverallTimeout = expectedPixelCount * cyclesPerPixelEstimate + baseTimeout
         
-        println(s"DUT ($modeNameSuffix): Collecting $expectedPixelCount YCbCr output pixels (timeout ${collectionOverallTimeout} cycles)...")
+        println(s"DUT ($testNameSuffix): Collecting $expectedPixelCount YCbCr output pixels (timeout ${collectionOverallTimeout} cycles)...")
         var cyclesInCollection = 0
         while(collectedYCbCrFromDUT.length < expectedPixelCount && cyclesInCollection < collectionOverallTimeout) {
           if (dut.io.dataOut.valid.peek().litToBoolean) {
-            val y_out = dut.io.dataOut.bits.y.peek().litValue
-            val cb_out = dut.io.dataOut.bits.cb.peek().litValue
-            val cr_out = dut.io.dataOut.bits.cr.peek().litValue
+            val y_out = dut.io.dataOut.bits.y.peek().litValue.toInt
+            val cb_out = dut.io.dataOut.bits.cb.peek().litValue.toInt
+            val cr_out = dut.io.dataOut.bits.cr.peek().litValue.toInt
             collectedYCbCrFromDUT += ((y_out, cb_out, cr_out))
           }
           dut.clock.step(1)
@@ -152,32 +194,42 @@ class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester w
         inputDriver.join()
         println("Input driver thread confirmed complete.")
 
-        val finalFlushCycles = imageHeight + 100 
+        val finalFlushCycles = imageHeight + 200 
         if (collectedYCbCrFromDUT.length < expectedPixelCount) {
-            println(s"DUT ($modeNameSuffix): Performing final output collection for up to $finalFlushCycles additional cycles...")
+            println(s"DUT ($testNameSuffix): Performing final output collection for up to $finalFlushCycles additional cycles...")
             var cyclesInFlush = 0
             while(collectedYCbCrFromDUT.length < expectedPixelCount && cyclesInFlush < finalFlushCycles) {
                 if (dut.io.dataOut.valid.peek().litToBoolean && dut.io.dataOut.ready.peek().litToBoolean) {
-                     val y = dut.io.dataOut.bits.y.peek().litValue
-                     val cb = dut.io.dataOut.bits.cb.peek().litValue
-                     val cr = dut.io.dataOut.bits.cr.peek().litValue
+                     val y = dut.io.dataOut.bits.y.peek().litValue.toInt
+                     val cb = dut.io.dataOut.bits.cb.peek().litValue.toInt
+                     val cr = dut.io.dataOut.bits.cr.peek().litValue.toInt
                      collectedYCbCrFromDUT += ((y, cb, cr))
                 }
                 dut.clock.step(1)
                 cyclesInFlush += 1
             }
         }
-        println(s"DUT ($modeNameSuffix): Collection complete. Collected ${collectedYCbCrFromDUT.length} pixels.")
+        println(s"DUT ($testNameSuffix): Collection complete. Collected ${collectedYCbCrFromDUT.length} pixels.")
         collectedYCbCrFromDUT.length should be (expectedPixelCount)
 
-        val finalRgbPixels = collectedYCbCrFromDUT.map { case (y, cb, cr) =>
-
-          YCbCrUtils.ycbcr2rgb(y.toInt, cb.toInt, cr.toInt)
+        val swSubsampledYCbCr = subsampleChromaSw(ycbcrInputToDUT, imageWidth, imageHeight, paramA, paramB)
+        
+        collectedYCbCrFromDUT.length should be (swSubsampledYCbCr.length)
+        for(i <- 0 until expectedPixelCount) {
+            withClue(s"Pixel $i, Y component:") { collectedYCbCrFromDUT(i)._1 shouldBe swSubsampledYCbCr(i)._1 }
+            withClue(s"Pixel $i, Cb component:") { collectedYCbCrFromDUT(i)._2 shouldBe swSubsampledYCbCr(i)._2 }
+            withClue(s"Pixel $i, Cr component:") { collectedYCbCrFromDUT(i)._3 shouldBe swSubsampledYCbCr(i)._3 }
         }
-        println(s"DUT ($modeNameSuffix): Converted ${finalRgbPixels.length} output pixels back to RGB.")
+        println(s"DUT ($testNameSuffix): Verified DUT output against software chroma subsampling model.")
+
+
+        val finalRgbPixels = collectedYCbCrFromDUT.map { case (y, cb, cr) =>
+          YCbCrUtils.ycbcr2rgb(y, cb, cr)
+        }
+        println(s"DUT ($testNameSuffix): Converted ${finalRgbPixels.length} output pixels back to RGB.")
 
         new File(outputDir).mkdirs()
-        val outputFilename = s"$outputDir/output_chroma_${modeNameSuffix}_${imageWidth}x$imageHeight.png"
+        val outputFilename = s"$outputDir/output_chroma_4-${paramA}-${paramB}_${testNameSuffix}_${imageWidth}x$imageHeight.png"
         saveRgbDataAsPng(outputFilename, finalRgbPixels.toSeq, imageWidth, imageHeight)
         
         dut.clock.step(5)
