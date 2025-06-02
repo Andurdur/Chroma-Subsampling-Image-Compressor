@@ -24,16 +24,13 @@ lazy val root = (project in file("."))
     Test / javaOptions ++= Seq(
       "-Xms1G",         // Initial Java heap size for tests (e.g., 1 Gigabyte)
       "-Xmx4G",         // Maximum Java heap size for tests (e.g., 4 Gigabytes)
-      // Optionally, you could add a different garbage collector if memory issues persist with larger heaps:
-      // "-XX:+UseG1GC"
     )
-
   )
 
 libraryDependencies += "org.scalatestplus" %% "junit-4-13" % "3.2.15.0" % "test"
 
-libraryDependencies += "com.sksamuel.scrimage" % "scrimage-core" % scrimageVersion
-libraryDependencies += "com.sksamuel.scrimage" % "scrimage-filters" % scrimageVersion
-libraryDependencies += "com.sksamuel.scrimage" %% "scrimage-io-extra" % scrimageVersion // Changed from scrimage-scala for better format support
+libraryDependencies += "com.sksamuel.scrimage" %% "scrimage-core" % scrimageVersion
+libraryDependencies += "com.sksamuel.scrimage" %% "scrimage-filters" % scrimageVersion
+libraryDependencies += "com.sksamuel.scrimage" %% "scrimage-formats-extra" % scrimageVersion
 
 
