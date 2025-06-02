@@ -1,3 +1,15 @@
+error id: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/test/scala/jpeg/ImageProcessorModel.scala:`<none>`.
+file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/test/scala/jpeg/ImageProcessorModel.scala
+empty definition using pc, found symbol in pc: `<none>`.
+empty definition using semanticdb
+empty definition using fallback
+non-local guesses:
+	 -ImageProcessorParams#
+	 -scala/Predef.ImageProcessorParams#
+offset: 899
+uri: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/test/scala/jpeg/ImageProcessorModel.scala
+text:
+```scala
 //Code from https://github.com/erendn/chisel-image-processor/blob/main/src/test/scala/ImageProcessorModel.scala
 //Using for image reading and writing
 
@@ -24,7 +36,7 @@ object ImageProcessorModel {
     image.output(new PngWriter(), outputFile)
   }
 
-  def writeImage(image: Array[Pixel], p: ImageProcessorParams, file: String): Unit = {
+  def writeImage(image: Array[Pixel], p: ImageProcesso@@rParams, file: String): Unit = {
      val imageObject = ImmutableImage.create(p.width, p.height, image)
      this.writeImage(imageObject, file)
    }
@@ -51,3 +63,9 @@ object ImageProcessorModel {
   }
 
 }
+```
+
+
+#### Short summary: 
+
+empty definition using pc, found symbol in pc: `<none>`.
