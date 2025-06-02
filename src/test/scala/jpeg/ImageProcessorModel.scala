@@ -1,15 +1,15 @@
-//Code from https://github.com/erendn/chisel-image-processor/blob/main/src/test/scala/ImageProcessorModel.scala
-//Using for image reading and writing
-
-package jpeg 
+package jpeg // Assuming this file is in the 'jpeg' package
 
 import java.io.File
 import com.sksamuel.scrimage.{ImmutableImage, MutableImage}
 import com.sksamuel.scrimage.nio.PngWriter
 import com.sksamuel.scrimage.pixels.Pixel
 
-import Chroma_Subsampling_Image_Compressor.ChromaSubsamplingMode
-
+// ImageProcessorParams is defined in the 'jpeg' package (in ImageProcessor.scala)
+// ChromaSubsamplingMode enum is no longer used by ImageProcessorParams for configuration.
+// If ChromaSubsamplingMode enum itself is needed for other utilities *within this file only*
+// and is defined in Chroma_Subsampling_Image_Compressor, it could be imported,
+// but it's not used by getImageParams anymore.
 
 object ImageProcessorModel {
 
@@ -26,19 +26,24 @@ object ImageProcessorModel {
     image.output(new PngWriter(), outputFile)
   }
 
+  // This method now correctly uses the updated ImageProcessorParams
   def writeImage(image: Array[Pixel], p: ImageProcessorParams, file: String): Unit = {
      val immutableTemp = ImmutableImage.create(p.width, p.height, image)
-     val mutableImage = immutableTemp.copy() // .copy() returns a MutableImage
+     val mutableImage = immutableTemp.copy() 
      ImageProcessorModel.writeImage(mutableImage, file)
    }
 
-  /** Default to no chroma subsampling (4:4:4) when you only need SpatialDownsampler */
+  /** * Gets ImageProcessorParams. Defaults to 4:4:4 chroma subsampling 
+   * (param_a=4, param_b=4) if only spatial downsampling is the focus.
+   */
   def getImageParams(image: ImmutableImage, numPixelsPerCycle: Int): ImageProcessorParams = {
     ImageProcessorParams(
-      width      = image.width,
-      height     = image.height,
-      factor     = numPixelsPerCycle,
-      chromaMode = ChromaSubsamplingMode.CHROMA_444 
+      width        = image.width,
+      height       = image.height,
+      factor       = numPixelsPerCycle,
+      // chromaMode = ChromaSubsamplingMode.CHROMA_444, // REMOVED
+      chromaParamA = 4, // Default to 4:4:4 equivalent (no chroma subsampling)
+      chromaParamB = 4  // Default to 4:4:4 equivalent
     )
    }
 
