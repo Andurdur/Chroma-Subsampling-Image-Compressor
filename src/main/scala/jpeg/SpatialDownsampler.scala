@@ -3,10 +3,6 @@ package Chroma_Subsampling_Image_Compressor
 import chisel3._
 import chisel3.util._
 
-// Assumes PixelYCbCrBundle is defined (e.g., by user, with y, cb, cr fields)
-// class PixelYCbCrBundle extends Bundle { val y=UInt(8.W); val cb=UInt(8.W); val cr=UInt(8.W); }
-
-
 class SpatialDownsampler(width: Int, height: Int, factor: Int) extends Module {
   require(width > 0 && height > 0, "Width and height must be positive")
   require(factor == 1 || factor == 2 || factor == 4 || factor == 8, "Factor must be 1, 2, 4, or 8")
@@ -58,7 +54,6 @@ class SpatialDownsampler(width: Int, height: Int, factor: Int) extends Module {
 
   io.out.bits := io.in.bits
 
-  // This internal printf is useful, keep it if you want.
   when(io.in.valid) { // Print when input is valid to see its state, regardless of fire
      printf(p"SpatialDownsampler: factor=$factor In(valid=${io.in.valid} ready=${io.in.ready}) Pos(col=${colCnt},row=${rowCnt}) SampleH=${sampleH} SampleV=${sampleV} DoSample=${doSample} -> Out(valid=${io.out.valid} ready=${io.out.ready})\n")
   }

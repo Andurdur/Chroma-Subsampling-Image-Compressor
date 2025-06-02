@@ -7,9 +7,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.collection.mutable.ListBuffer
 
-// Assuming ColorQuantizer.scala (with QuantizationMode enum) and
-// PixelYCbCrBundle (with y, cb, cr fields) are in this package or imported.
-
 class ColorQuantizerSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
 
   behavior of "ColorQuantizer"
@@ -136,7 +133,7 @@ class ColorQuantizerSpec extends AnyFlatSpec with ChiselScalatestTester with Mat
           dut_cr.toInt should be (exp_cr)
         }
         println(s"Test for $modeName passed. All pixel values correctly quantized.")
-        dut.clock.step(5) // Final settle
+        dut.clock.step(5)
       }
     }
   }

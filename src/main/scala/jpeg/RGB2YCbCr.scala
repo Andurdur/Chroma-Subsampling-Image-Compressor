@@ -1,4 +1,4 @@
-package jpeg // Assuming this module is in the 'jpeg' package
+package jpeg 
 
 import chisel3._
 import chisel3.util._

@@ -1,4 +1,4 @@
-package Chroma_Subsampling_Image_Compressor // Test file is in this package
+package Chroma_Subsampling_Image_Compressor 
 
 import chisel3._
 import chisel3.util._
@@ -10,18 +10,10 @@ import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.MutableImage
 import com.sksamuel.scrimage.pixels.Pixel
 
-// Import necessary classes from the 'jpeg' package
 import jpeg.ImageProcessorParams
 import jpeg.ImageProcessor
-import jpeg.YCbCrUtils.ycbcr2rgb // Utility from jpeg.YCbCrUtils
-// PixelBundle and PixelYCbCrBundle are defined in the current Chroma_Subsampling_Image_Compressor package
-// (in PixelBundle.scala), so they should not be imported from 'jpeg'.
-// import jpeg.PixelBundle          // REMOVED - Incorrect import
-// import jpeg.PixelYCbCrBundle     // REMOVED - Incorrect import
-import jpeg.ImageProcessorModel  // Import the ImageProcessorModel object
-
-// SpatialDownsampler (class) and ChromaSubsamplingMode (object/enum) are assumed to be defined
-// within the current 'Chroma_Subsampling_Image_Compressor' package.
+import jpeg.YCbCrUtils.ycbcr2rgb 
+import jpeg.ImageProcessorModel  
 
 class SpatialDownsamplerSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
   behavior of "SpatialDownsampler"

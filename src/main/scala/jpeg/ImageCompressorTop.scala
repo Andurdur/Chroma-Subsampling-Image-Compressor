@@ -1,4 +1,3 @@
-// Should be in file: src/main/scala/jpeg/ImageCompressorTop.scala
 package jpeg
 
 import chisel3._
@@ -23,14 +22,14 @@ class ImageCompressorTop(
 
   // Instantiate sub-modules
   // Ensure these modules are correctly defined in their respective packages
-  val toYC    = Module(new RGB2YCbCr()) // Assumed to be in 'jpeg' package
+  val toYC    = Module(new RGB2YCbCr()) 
   val chroma  = Module(new ChromaSubsampler(
     imageWidth = width,
     imageHeight = height,
     bitWidth = fixedBitWidth
-  )) // From Chroma_Subsampling_Image_Compressor package
-  val spatial = Module(new SpatialDownsampler(width, height, downFactor)) // From Chroma_Subsampling_Image_Compressor package
-  val quant   = Module(new ColorQuantizer(originalBitWidth = fixedBitWidth)) // From Chroma_Subsampling_Image_Compressor package
+  )) 
+  val spatial = Module(new SpatialDownsampler(width, height, downFactor))
+  val quant   = Module(new ColorQuantizer(originalBitWidth = fixedBitWidth)) 
 
   // Directly assign modes from input parameters
   chroma.io.mode := chromaModeSelect

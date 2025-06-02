@@ -23,18 +23,12 @@ class ChromaSubsampler(
 ) extends Module {
   require(imageWidth > 0, "Image width must be positive")
   require(imageHeight > 0, "Image height must be positive")
-  // PixelYCbCrBundle uses 8.W for its components.
-  // This version of ChromaSubsampler must be instantiated with bitWidth = 8
-  // if it's to connect directly to modules using PixelYCbCrBundle.
   require(bitWidth == 8, "bitWidth must be 8 to match PixelYCbCrBundle's component widths.")
 
   val io = IO(new Bundle {
-    // Input YCbCr pixel stream, using PixelYCbCrBundle from PixelBundle.scala
-    val dataIn = Flipped(Decoupled(new PixelYCbCrBundle())) // Changed to PixelYCbCrBundle
-    // Chroma subsampling mode (e.g., 4:4:4, 4:2:2, 4:2:0)
+    val dataIn = Flipped(Decoupled(new PixelYCbCrBundle()))
     val mode = Input(ChromaSubsamplingMode())
-    // Output YCbCr pixel stream (potentially with subsampled Cb, Cr)
-    val dataOut = Decoupled(new PixelYCbCrBundle())      // Changed to PixelYCbCrBundle
+    val dataOut = Decoupled(new PixelYCbCrBundle()) 
   })
 
   // Registers to hold the output pixel data
@@ -45,8 +39,8 @@ class ChromaSubsampler(
   val validReg = RegInit(false.B)
 
   // Registers to store the Cb and Cr values from the last relevant sampling point
-  val lastCbReg = RegInit(0.U(bitWidth.W)) // Initialize to ensure they have a defined value
-  val lastCrReg = RegInit(0.U(bitWidth.W)) // Initialize to ensure they have a defined value
+  val lastCbReg = RegInit(0.U(bitWidth.W))
+  val lastCrReg = RegInit(0.U(bitWidth.W)) 
 
 
   // Counters for current pixel column and row, advance when an input pixel is accepted (io.dataIn.fire)
@@ -67,8 +61,8 @@ class ChromaSubsampler(
     validReg := true.B       // Output registers will now hold valid data
 
     // Determine current Cb and Cr values based on subsampling mode
-    val currentCb = WireDefault(lastCbReg) // Initialize with lastCbReg
-    val currentCr = WireDefault(lastCrReg) // Initialize with lastCrReg
+    val currentCb = WireDefault(lastCbReg) 
+    val currentCr = WireDefault(lastCrReg)
 
 
     switch(io.mode) {

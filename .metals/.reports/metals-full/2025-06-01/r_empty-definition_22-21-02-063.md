@@ -1,7 +1,32 @@
+error id: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/test/scala/jpeg/ColorQuantizerImageSpec.scala:`<none>`.
+file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/test/scala/jpeg/ColorQuantizerImageSpec.scala
+empty definition using pc, found symbol in pc: `<none>`.
+empty definition using semanticdb
+empty definition using fallback
+non-local guesses:
+	 -chisel3/image/setColor.
+	 -chisel3/image/setColor#
+	 -chisel3/image/setColor().
+	 -chisel3/util/image/setColor.
+	 -chisel3/util/image/setColor#
+	 -chisel3/util/image/setColor().
+	 -chiseltest/image/setColor.
+	 -chiseltest/image/setColor#
+	 -chiseltest/image/setColor().
+	 -image/setColor.
+	 -image/setColor#
+	 -image/setColor().
+	 -scala/Predef.image.setColor.
+	 -scala/Predef.image.setColor#
+	 -scala/Predef.image.setColor().
+offset: 2489
+uri: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/test/scala/jpeg/ColorQuantizerImageSpec.scala
+text:
+```scala
 package Chroma_Subsampling_Image_Compressor
 
 import chisel3._
-import chisel3.util._ 
+import chisel3.util._ // For DecoupledIO
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -15,14 +40,20 @@ import java.io.File
 import java.awt.image.BufferedImage
 import scala.collection.mutable.ListBuffer
 
+// Assuming YCbCrUtils object (with ycbcr2rgb) is in this package or imported
 import Chroma_Subsampling_Image_Compressor.YCbCrUtils.ycbcr2rgb
+
+// Assuming ColorQuantizer.scala (with QuantizationMode enum) and
+// PixelYCbCrBundle (with y, cb, cr fields) are in this package or imported.
 
 class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
 
   behavior of "ColorQuantizer with Image Files"
 
-  val originalBitWidth = 8 
+  val originalBitWidth = 8 // Consistent with ColorQuantizer and PixelYCbCrBundle
 
+  // Software model of the RGB to YCbCr conversion, mimicking the
+  // fixed-point arithmetic of the user's RGB2YCbCr Chisel module.
   def rgbToYCbCr_fixedPointModel(r_in: Int, g_in: Int, b_in: Int): (Int, Int, Int) = {
     val R = math.max(0, math.min(255, r_in))
     val G = math.max(0, math.min(255, g_in))
@@ -45,6 +76,8 @@ class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester wit
     (y_final, cb_final, cr_final)
   }
 
+  // ycbcrToRgb will use YCbCrUtils.ycbcr2rgb (imported)
+
   def saveRgbDataAsPng(
       filePath: String,
       rgbPixelData: Seq[(Int, Int, Int)],
@@ -57,7 +90,7 @@ class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester wit
     for (yIdx <- 0 until height) {
       for (xIdx <- 0 until width) {
         val (r, g, b) = rgbPixelData(yIdx * width + xIdx)
-        image.setColor(xIdx, yIdx, new RGBColor(r, g, b, 255))
+        image.setC@@olor(xIdx, yIdx, new RGBColor(r, g, b, 255))
       }
     }
     val file = new File(filePath)
@@ -178,7 +211,7 @@ class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester wit
 
         // 3. Convert DUT's quantized YCbCr output back to RGB using YCbCrUtils
         val finalRgbPixels = collectedYCbCrFromDUT.map { case (y, cb, cr) =>
-          YCbCrUtils.ycbcr2rgb(y.toInt, cb.toInt, cr.toInt)
+          YCbCrUtils.ycbcr2rgb(y.toInt, cb.toInt, cr.toInt) // Using your utility
         }
         println(s"DUT ($modeNameSuffix): Converted ${finalRgbPixels.length} output pixels back to RGB.")
 
@@ -187,8 +220,15 @@ class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester wit
         val outputFilename = s"$outputDir/output_quantized_${modeNameSuffix}_${imageWidth}x$imageHeight.png"
         saveRgbDataAsPng(outputFilename, finalRgbPixels.toSeq, imageWidth, imageHeight)
         
-        dut.clock.step(5) 
+        dut.clock.step(5) // Final settle
       }
     }
   }
 }
+
+```
+
+
+#### Short summary: 
+
+empty definition using pc, found symbol in pc: `<none>`.

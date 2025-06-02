@@ -1,15 +1,8 @@
-package Chroma_Subsampling_Image_Compressor // Or 'jpeg' if that's your primary package
+package Chroma_Subsampling_Image_Compressor 
 
 import chisel3._
 import chisel3.util._
 
-// Assuming PixelYCbCrBundle is defined elsewhere in this package
-// and has y, cb, cr fields, each UInt(8.W)
-// class PixelYCbCrBundle extends Bundle {
-//   val y  = UInt(8.W)
-//   val cb = UInt(8.W)
-//   val cr = UInt(8.W)
-// }
 
 object QuantizationMode extends ChiselEnum {
   val Q_24BIT, // Effectively 8-8-8 YCbCr (no quantization)
@@ -57,7 +50,6 @@ class ColorQuantizer(originalBitWidth: Int = 8) extends Module {
       cbTargetEffectiveBits := 3.U
       crTargetEffectiveBits := 2.U
     }
-    // Removed isDefault; the pre-assignment handles other cases.
   }
 
   val yShiftAmount  = Wire(UInt(4.W))

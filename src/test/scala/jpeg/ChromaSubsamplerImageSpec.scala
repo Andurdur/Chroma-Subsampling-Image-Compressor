@@ -1,7 +1,7 @@
 package Chroma_Subsampling_Image_Compressor
 
 import chisel3._
-import chisel3.util._ // For DecoupledIO
+import chisel3.util._ 
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -15,7 +15,6 @@ import java.io.File
 import java.awt.image.BufferedImage
 import scala.collection.mutable.ListBuffer
 
-// Using your provided YCbCrUtils for the YCbCr to RGB conversion
 import Chroma_Subsampling_Image_Compressor.YCbCrUtils.ycbcr2rgb
 
 class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {

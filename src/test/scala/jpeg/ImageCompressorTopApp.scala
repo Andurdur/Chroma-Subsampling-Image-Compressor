@@ -4,7 +4,7 @@ import chisel3._
 import chiseltest._
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.MutableImage
-import com.sksamuel.scrimage.color.RGBColor // Import RGBColor directly
+import com.sksamuel.scrimage.color.RGBColor 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
 import java.awt.{Color => AwtColor} // Using java.awt.Color for ImmutableImage.filled
@@ -140,7 +140,7 @@ object ImageCompressionApp extends App {
       println(s"Output collection finished. Collected ${outputPixelData.length} pixels.")
       
       inputDriver.join()
-    } // End of test block
+    }
 
     if (outputPixelData.length != outputWidth * outputHeight) {
       println(s"[ERROR] Mismatch in output pixel count. Expected: ${outputWidth * outputHeight}, Got: ${outputPixelData.length}")
