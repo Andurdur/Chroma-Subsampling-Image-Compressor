@@ -1,38 +1,29 @@
-package Chroma_Subsampling_Image_Compressor // Matching your provided package name
+package Chroma_Subsampling_Image_Compressor
 
 import chisel3._
 import chisel3.util._
 
-// Assuming the following are defined in this package or imported correctly:
-// - class PixelBundle extends Bundle { ... }
-// - class PixelYCbCrBundle extends Bundle { ... } // Used by ImageCompressorTop's IO and submodules
-// - class RGB2YCbCr extends Module { ... }
-// - class SpatialDownsampler(width: Int, height: Int, factor: Int) extends Module { ... }
-// - class ColorQuantizer extends Module { ... }
-// - class ChromaSubsampler(imageWidth: Int, imageHeight: Int, bitWidth: Int) extends Module { ... }
-//   (And this ChromaSubsampler's IO now uses DecoupledIO for dataIn and dataOut)
-// - object ChromaSubsamplingMode extends ChiselEnum { ... }
-
 class ImageCompressorTop(width: Int, height: Int, subMode: Int, downFactor: Int) extends Module {
   val io = IO(new Bundle {
     val in  = Flipped(Decoupled(new PixelBundle))
-    val out = Decoupled(new PixelYCbCrBundle) // Your PixelYCbCrBundle
+    val out = Decoupled(new PixelYCbCrBundle)
     val sof = Input(Bool())
     val eol = Input(Bool())
   })
 
-  val fixedBitWidth = 8 // Assuming this is consistent with your Bundle definitions
+  val fixedBitWidth = 8 
 
   val toYC    = Module(new RGB2YCbCr)
-  val chroma  = Module(new ChromaSubsampler( // This instantiation seems fine
+  val chroma  = Module(new ChromaSubsampler(
     imageWidth = width,
     imageHeight = height,
     bitWidth = fixedBitWidth
   ))
   val spatial = Module(new SpatialDownsampler(width, height, downFactor))
-  val quant   = Module(new ColorQuantizer)
+  val quant   = Module(new ColorQuantizer(originalBitWidth = fixedBitWidth)) // Instantiate ColorQuantizer
 
-  val selectedChromaMode = Wire(ChromaSubsamplingMode()) // Ensure ChromaSubsamplingMode is in scope
+  // --- Mode Selection for Chroma Subsampler ---
+  val selectedChromaMode = Wire(ChromaSubsamplingMode())
   selectedChromaMode := MuxCase(
     ChromaSubsamplingMode.CHROMA_444, 
     Array(
@@ -41,18 +32,29 @@ class ImageCompressorTop(width: Int, height: Int, subMode: Int, downFactor: Int)
       (subMode.U === 2.U) -> ChromaSubsamplingMode.CHROMA_420
     )
   )
-  chroma.io.mode := selectedChromaMode // This connection to mode is fine
+  chroma.io.mode := selectedChromaMode
 
-  // --- Pipeline Connections with Debug Printfs ---
 
-  // Input to RGB2YCbCr
+  val selectedQuantMode = Wire(QuantizationMode())
+  selectedQuantMode := MuxCase(
+    QuantizationMode.Q_24BIT, 
+    Array(
+
+      (subMode.U === 0.U) -> QuantizationMode.Q_24BIT,
+      (subMode.U === 1.U) -> QuantizationMode.Q_16BIT,
+      (subMode.U === 2.U) -> QuantizationMode.Q_8BIT
+    )
+  )
+  quant.io.mode := selectedQuantMode // Connect the mode to the quantizer instance
+
+
+
   toYC.io.in <> io.in
   when(io.in.fire) {
     printf(p"ICT_INPUT_FIRE: SOF=${io.sof} EOL=${io.eol} BitsIn=${io.in.bits}\n")
   }
 
-  // RGB2YCbCr to SpatialDownsampler
-  toYC.io.out <> spatial.io.in // Assuming toYC.io.out is Decoupled and type-compatible
+  toYC.io.out <> spatial.io.in
   when(toYC.io.out.fire) {
     printf(p"ICT_TOYC_OUT_FIRE: BitsToSpatial=${toYC.io.out.bits}\n")
   }
@@ -60,28 +62,20 @@ class ImageCompressorTop(width: Int, height: Int, subMode: Int, downFactor: Int)
   spatial.io.sof := io.sof
   spatial.io.eol := io.eol
 
-  // SpatialDownsampler to ColorQuantizer
-  spatial.io.out <> quant.io.in // Assuming spatial.io.out is Decoupled and type-compatible
+  spatial.io.out <> quant.io.in
   when(spatial.io.out.fire) {
     printf(p"ICT_SPATIAL_OUT_FIRE: BitsToQuant=${spatial.io.out.bits}\n")
   }
 
-  // ColorQuantizer to ChromaSubsampler
-  // Assuming quant.io.out is Decoupled(PixelYCbCrBundle)
-  // and chroma.io.dataIn is Flipped(Decoupled(PixelYCbCrBundle))
-  quant.io.out <> chroma.io.dataIn // Corrected: Use bulk connect
+  quant.io.out <> chroma.io.dataIn // If ChromaSubsampler IO uses Decoupled(PixelYCbCrBundle)
 
-  when(chroma.io.dataIn.fire) { // Changed condition to chroma's input fire
+  when(quant.io.out.fire) { // Or when(chroma.io.dataIn.fire)
     printf(p"ICT_QUANT_OUT_FIRE (To Chroma): Fire | BitsToChroma=${chroma.io.dataIn.bits}\n")
   }
   
-  // ChromaSubsampler Output to ImageCompressorTop Output
-  // Assuming chroma.io.dataOut is Decoupled(PixelYCbCrBundle)
-  // and io.out is Decoupled(PixelYCbCrBundle)
-  chroma.io.dataOut <> io.out // Corrected: Use bulk connect
+  chroma.io.dataOut <> io.out // If ChromaSubsampler IO uses Decoupled(PixelYCbCrBundle)
 
-  // Use io.out.fire for the printf, as this represents the final output transaction
-  when(io.out.fire) { 
+  when(io.out.fire){ // Data leaves ImageCompressorTop
      printf(p"ICT_FINAL_OUTPUT_FIRE (from Chroma): Fire | Bits=${io.out.bits}\n")
   }
 }
