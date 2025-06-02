@@ -54,7 +54,7 @@ class SpatialDownsampler(width: Int, height: Int, factor: Int) extends Module {
 
   io.out.bits := io.in.bits
 
-  when(io.in.valid) { // Print when input is valid to see its state, regardless of fire
-     printf(p"SpatialDownsampler: factor=$factor In(valid=${io.in.valid} ready=${io.in.ready}) Pos(col=${colCnt},row=${rowCnt}) SampleH=${sampleH} SampleV=${sampleV} DoSample=${doSample} -> Out(valid=${io.out.valid} ready=${io.out.ready})\n")
-  }
+  // when(io.in.valid) { // Print when input is valid to see its state, regardless of fire
+  //    printf(p"SpatialDownsampler: factor=$factor In(valid=${io.in.valid} ready=${io.in.ready}) Pos(col=${colCnt},row=${rowCnt}) SampleH=${sampleH} SampleV=${sampleV} DoSample=${doSample} -> Out(valid=${io.out.valid} ready=${io.out.ready})\n")
+  // }
 }

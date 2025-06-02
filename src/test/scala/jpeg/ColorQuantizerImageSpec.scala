@@ -101,7 +101,7 @@ class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester wit
       val inputImage = ImmutableImage.loader().fromFile(inputImageFile)
       val imageWidth = inputImage.width
       val imageHeight = inputImage.height
-      println(s"Read input image: $inputImagePath (${imageWidth}x$imageHeight)")
+      // println(s"Read input image: $inputImagePath (${imageWidth}x$imageHeight)")
 
       val ycbcrInputToDUT = ListBuffer[(Int, Int, Int)]()
       for (yIdx <- 0 until imageHeight; xIdx <- 0 until imageWidth) {
@@ -109,7 +109,7 @@ class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester wit
         ycbcrInputToDUT += rgbToYCbCr_fixedPointModel(rgb.red, rgb.green, rgb.blue)
       }
       val expectedPixelCount = ycbcrInputToDUT.length
-      println(s"Converted input image to YCbCr (software model) - $expectedPixelCount pixels.")
+      // println(s"Converted input image to YCbCr (software model) - $expectedPixelCount pixels.")
 
       // Instantiate ColorQuantizer (from Chroma_Subsampling_Image_Compressor package)
       // with the specific bit depths for this test case
@@ -127,7 +127,7 @@ class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester wit
         val collectedYCbCrFromDUT = ListBuffer[(Int, Int, Int)]()
         
         val inputDriver = fork {
-          println(s"DUT ($testNameSuffix): Driving $expectedPixelCount YCbCr pixels to ColorQuantizer...")
+          // println(s"DUT ($testNameSuffix): Driving $expectedPixelCount YCbCr pixels to ColorQuantizer...")
           for (idx <- 0 until expectedPixelCount) {
             val (y_in, cb_in, cr_in) = ycbcrInputToDUT(idx)
             
@@ -146,14 +146,14 @@ class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester wit
             dut.clock.step(1) 
           }
           dut.io.in.valid.poke(false.B)
-          println(s"DUT ($testNameSuffix): Finished driving pixels to ColorQuantizer.")
+          // println(s"DUT ($testNameSuffix): Finished driving pixels to ColorQuantizer.")
         }
 
         val cyclesPerPixelEstimate = 5 
         val baseTimeout = imageHeight + 4000 
         val collectionOverallTimeout = expectedPixelCount * cyclesPerPixelEstimate + baseTimeout
         
-        println(s"DUT ($testNameSuffix): Collecting $expectedPixelCount quantized YCbCr output pixels (timeout ${collectionOverallTimeout} cycles)...")
+        // println(s"DUT ($testNameSuffix): Collecting $expectedPixelCount quantized YCbCr output pixels (timeout ${collectionOverallTimeout} cycles)...")
         var cyclesInCollection = 0
         while(collectedYCbCrFromDUT.length < expectedPixelCount && cyclesInCollection < collectionOverallTimeout) {
           if (dut.io.out.valid.peek().litToBoolean) {
@@ -166,13 +166,13 @@ class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester wit
           cyclesInCollection += 1
         }
         
-        println("Initial collection loop finished.")
+        // println("Initial collection loop finished.")
         inputDriver.join() 
-        println("Input driver thread confirmed complete.")
+        // println("Input driver thread confirmed complete.")
 
         val finalFlushCycles = imageHeight + 200 
         if (collectedYCbCrFromDUT.length < expectedPixelCount) {
-            println(s"DUT ($testNameSuffix): Performing final output collection for up to $finalFlushCycles additional cycles...")
+            // println(s"DUT ($testNameSuffix): Performing final output collection for up to $finalFlushCycles additional cycles...")
             var cyclesInFlush = 0
             while(collectedYCbCrFromDUT.length < expectedPixelCount && cyclesInFlush < finalFlushCycles) {
                 if (dut.io.out.valid.peek().litToBoolean && dut.io.out.ready.peek().litToBoolean) {
@@ -185,7 +185,7 @@ class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester wit
                 cyclesInFlush += 1
             }
         }
-        println(s"DUT ($testNameSuffix): Collection complete. Collected ${collectedYCbCrFromDUT.length} pixels.")
+        // println(s"DUT ($testNameSuffix): Collection complete. Collected ${collectedYCbCrFromDUT.length} pixels.")
         
         collectedYCbCrFromDUT.length should be (expectedPixelCount)
 
@@ -198,12 +198,12 @@ class ColorQuantizerImageSpec extends AnyFlatSpec with ChiselScalatestTester wit
             withClue(s"Pixel $i, Cb component:") { collectedYCbCrFromDUT(i)._2 shouldBe swQuantizedYCbCr(i)._2 }
             withClue(s"Pixel $i, Cr component:") { collectedYCbCrFromDUT(i)._3 shouldBe swQuantizedYCbCr(i)._3 }
         }
-        println(s"DUT ($testNameSuffix): Verified DUT output against software quantization model.")
+        // println(s"DUT ($testNameSuffix): Verified DUT output against software quantization model.")
 
         val finalRgbPixels = collectedYCbCrFromDUT.map { case (y, cb, cr) =>
           YCbCrUtils.ycbcr2rgb(y, cb, cr)
         }
-        println(s"DUT ($testNameSuffix): Converted ${finalRgbPixels.length} output pixels back to RGB.")
+        // println(s"DUT ($testNameSuffix): Converted ${finalRgbPixels.length} output pixels back to RGB.")
 
         new File(outputDir).mkdirs() 
         val outputFilename = s"$outputDir/output_quantized_${testNameSuffix}_${imageWidth}x$imageHeight.png"

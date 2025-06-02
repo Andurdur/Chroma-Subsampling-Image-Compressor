@@ -1,3 +1,14 @@
+error id: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/test/scala/jpeg/ImageCompressorTopApp.scala:`<none>`.
+file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/test/scala/jpeg/ImageCompressorTopApp.scala
+empty definition using pc, found symbol in pc: `<none>`.
+empty definition using semanticdb
+empty definition using fallback
+non-local guesses:
+
+offset: 6774
+uri: file://wsl.localhost/Ubuntu/home/anngvo/CSE-228A/Chroma-Subsampling-Image-Compressor/src/test/scala/jpeg/ImageCompressorTopApp.scala
+text:
+```scala
 package jpeg
 
 import chisel3._
@@ -35,12 +46,12 @@ object ImageCompressionApp extends App {
       op3: ProcessingStep.Type
   ): Unit = {
 
-    // println(s"Reading image from: $inputImagePath")
+    println(s"Reading image from: $inputImagePath")
     val inputImage: ImmutableImage = ImageProcessorModel.readImage(inputImagePath)
     val imageWidth = inputImage.width
     val imageHeight = inputImage.height
 
-    // println(s"Input image dimensions: ${imageWidth}x$imageHeight")
+    println(s"Input image dimensions: ${imageWidth}x$imageHeight")
 
     val finalOutputWidth = if (op1 == ProcessingStep.SpatialSampling || op2 == ProcessingStep.SpatialSampling || op3 == ProcessingStep.SpatialSampling) imageWidth / spatialFactorToUse else imageWidth
     val finalOutputHeight = if (op1 == ProcessingStep.SpatialSampling || op2 == ProcessingStep.SpatialSampling || op3 == ProcessingStep.SpatialSampling) imageHeight / spatialFactorToUse else imageHeight
@@ -51,10 +62,10 @@ object ImageCompressionApp extends App {
         }
     }
 
-    // println(s"Expected output image dimensions will be: ${finalOutputWidth}x$finalOutputHeight")
-    // println(s"Processing with pipeline order: $op1 -> $op2 -> $op3")
-    // println(s"  Chroma Subsampling (J:a:b format, J=4): 4:$chromaParamA:$chromaParamB")
-    // println(s"  QuantBits (Y/Cb/Cr): $yTargetBits/$cbTargetBits/$crTargetBits, SpatialFactor: $spatialFactorToUse")
+    println(s"Expected output image dimensions will be: ${finalOutputWidth}x$finalOutputHeight")
+    println(s"Processing with pipeline order: $op1 -> $op2 -> $op3")
+    println(s"  Chroma Subsampling (J:a:b format, J=4): 4:$chromaParamA:$chromaParamB")
+    println(s"  QuantBits (Y/Cb/Cr): $yTargetBits/$cbTargetBits/$crTargetBits, SpatialFactor: $spatialFactorToUse")
 
     val outputPixelData = ArrayBuffer[(Int, Int, Int)]()
 
@@ -82,7 +93,7 @@ object ImageCompressionApp extends App {
       dut.clock.step(1)             
 
       val inputDriver = fork {
-        // println("Input driver thread started.")
+        println("Input driver thread started.")
         
         for (y <- 0 until imageHeight) {
           for (x <- 0 until imageWidth) {
@@ -113,10 +124,10 @@ object ImageCompressionApp extends App {
         dut.io.in.valid.poke(false.B)
         dut.io.sof.poke(false.B)
         dut.io.eol.poke(false.B)
-        // println("Input driver thread finished.")
+        println("Input driver thread finished.")
       }
 
-      // println("Output collection started.")
+      println("Output collection started.")
       
       var collectedPixels = 0
       val expectedOutputPixels = finalOutputWidth * finalOutputHeight
@@ -139,18 +150,18 @@ object ImageCompressionApp extends App {
       if (timeoutCycles <= 0 && collectedPixels < expectedOutputPixels) {
         println(s"[WARN] Output collection timed out. Collected $collectedPixels out of $expectedOutputPixels pixels.")
       }
-      // println(s"Output collection finished. Collected ${outputPixelData.length} pixels.")
+      println(s"Output collection finished. Collected ${outputPixelData.length} pixels.")
       
       inputDriver.join()
     } 
 
-    // if (outputPixelData.length != finalOutputWidth * finalOutputHeight) {
-    //   println(s"[ERROR] Mismatch in output pixel count. Expected: ${finalOutputWidth * finalOutputHeight}, Got: ${outputPixelData.length}")
-    // } else {
-    //   println("Successfully collected all expected output pixels.")
-    // }
+    if (outputPixelData.length != finalOutputWidth * finalOutputHeight) {
+      println(s"[ERROR] Mismatch in output pixel count. Expected: ${finalOutputWidth * finalOutputHeight}, Got: ${outputPixelData.length}")
+    } else {
+      println("Successfully collected all expected output pixels.")
+    }
 
-    // println("Constructing output image...")
+    println("Constructing output image...")
     val transparentBlackAwt = new AwtColor(0, 0, 0, 0) 
     val outputMutableImage = ImmutableImage.filled(finalOutputWidth, finalOutputHeight, transparentBlackAwt).copy()
     for (y <- 0 until finalOutputHeight) {
@@ -165,9 +176,9 @@ object ImageCompressionApp extends App {
       }
     }
     
-    // println(s"Writing processed image to: $outputImagePath")
+    println(s"Writing processed image to: $outputImagePath")
     ImageProcessorModel.writeImage(outputMutableImage, outputImagePath) 
-    // println("Image processing complete.")
+    @@// println("Image processing complete.")
   }
 
   // --- Main execution ---
@@ -240,3 +251,10 @@ object ImageCompressionApp extends App {
     )
   }
 }
+
+```
+
+
+#### Short summary: 
+
+empty definition using pc, found symbol in pc: `<none>`.

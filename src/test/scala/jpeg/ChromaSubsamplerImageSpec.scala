@@ -121,7 +121,7 @@ class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester w
       val inputImage = ImmutableImage.loader().fromFile(inputImageFile)
       val imageWidth = inputImage.width
       val imageHeight = inputImage.height
-      println(s"Read input image: $inputImagePath (${imageWidth}x$imageHeight)")
+      // println(s"Read input image: $inputImagePath (${imageWidth}x$imageHeight)")
 
       val ycbcrInputToDUT_list = ListBuffer[(Int, Int, Int)]()
       for (yIdx <- 0 until imageHeight; xIdx <- 0 until imageWidth) {
@@ -130,7 +130,7 @@ class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester w
       }
       val ycbcrInputToDUT = ycbcrInputToDUT_list.toSeq
       val expectedPixelCount = ycbcrInputToDUT.length
-      println(s"Converted input image to YCbCr (software model) - $expectedPixelCount pixels.")
+      // println(s"Converted input image to YCbCr (software model) - $expectedPixelCount pixels.")
 
       test(new ChromaSubsampler(
                 imageWidth = imageWidth, 
@@ -148,7 +148,7 @@ class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester w
         val collectedYCbCrFromDUT = ListBuffer[(Int, Int, Int)]()
         
         val inputDriver = fork {
-          println(s"DUT ($testNameSuffix): Driving $expectedPixelCount YCbCr pixels...")
+          // println(s"DUT ($testNameSuffix): Driving $expectedPixelCount YCbCr pixels...")
           for (idx <- 0 until expectedPixelCount) {
             val (y_in, cb_in, cr_in) = ycbcrInputToDUT(idx)
             
@@ -167,14 +167,14 @@ class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester w
             dut.clock.step(1)
           }
           dut.io.dataIn.valid.poke(false.B)
-          println(s"DUT ($testNameSuffix): Finished driving pixels.")
+          // println(s"DUT ($testNameSuffix): Finished driving pixels.")
         }
 
         val cyclesPerPixelEstimate = 5 
         val baseTimeout = imageHeight + 4000 
         val collectionOverallTimeout = expectedPixelCount * cyclesPerPixelEstimate + baseTimeout
         
-        println(s"DUT ($testNameSuffix): Collecting $expectedPixelCount YCbCr output pixels (timeout ${collectionOverallTimeout} cycles)...")
+        // println(s"DUT ($testNameSuffix): Collecting $expectedPixelCount YCbCr output pixels (timeout ${collectionOverallTimeout} cycles)...")
         var cyclesInCollection = 0
         while(collectedYCbCrFromDUT.length < expectedPixelCount && cyclesInCollection < collectionOverallTimeout) {
           if (dut.io.dataOut.valid.peek().litToBoolean) {
@@ -187,13 +187,13 @@ class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester w
           cyclesInCollection += 1
         }
         
-        println("Initial collection loop finished.")
+        // println("Initial collection loop finished.")
         inputDriver.join()
-        println("Input driver thread confirmed complete.")
+        // println("Input driver thread confirmed complete.")
 
         val finalFlushCycles = imageHeight + 200 
         if (collectedYCbCrFromDUT.length < expectedPixelCount) {
-            println(s"DUT ($testNameSuffix): Performing final output collection for up to $finalFlushCycles additional cycles...")
+            // println(s"DUT ($testNameSuffix): Performing final output collection for up to $finalFlushCycles additional cycles...")
             var cyclesInFlush = 0
             while(collectedYCbCrFromDUT.length < expectedPixelCount && cyclesInFlush < finalFlushCycles) {
                 if (dut.io.dataOut.valid.peek().litToBoolean && dut.io.dataOut.ready.peek().litToBoolean) {
@@ -206,7 +206,7 @@ class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester w
                 cyclesInFlush += 1
             }
         }
-        println(s"DUT ($testNameSuffix): Collection complete. Collected ${collectedYCbCrFromDUT.length} pixels.")
+        // println(s"DUT ($testNameSuffix): Collection complete. Collected ${collectedYCbCrFromDUT.length} pixels.")
         collectedYCbCrFromDUT.length should be (expectedPixelCount)
 
         val swSubsampledYCbCr = subsampleChromaSw(ycbcrInputToDUT, imageWidth, imageHeight, paramA, paramB)
@@ -217,13 +217,13 @@ class ChromaSubsamplerImageSpec extends AnyFlatSpec with ChiselScalatestTester w
             withClue(s"Pixel $i, Cb component:") { collectedYCbCrFromDUT(i)._2 shouldBe swSubsampledYCbCr(i)._2 }
             withClue(s"Pixel $i, Cr component:") { collectedYCbCrFromDUT(i)._3 shouldBe swSubsampledYCbCr(i)._3 }
         }
-        println(s"DUT ($testNameSuffix): Verified DUT output against software chroma subsampling model.")
+        // println(s"DUT ($testNameSuffix): Verified DUT output against software chroma subsampling model.")
 
 
         val finalRgbPixels = collectedYCbCrFromDUT.map { case (y, cb, cr) =>
           YCbCrUtils.ycbcr2rgb(y, cb, cr)
         }
-        println(s"DUT ($testNameSuffix): Converted ${finalRgbPixels.length} output pixels back to RGB.")
+        // println(s"DUT ($testNameSuffix): Converted ${finalRgbPixels.length} output pixels back to RGB.")
 
         new File(outputDir).mkdirs()
         val outputFilename = s"$outputDir/output_chroma_4-${paramA}-${paramB}_${testNameSuffix}_${imageWidth}x$imageHeight.png"
