@@ -89,7 +89,5 @@ class ColorQuantizer(originalBitWidth: Int = 8) extends Module {
   io.out.bits.cr := cr_quantized_reg
   io.out.valid   := valid_reg
 
-  when(io.in.valid || io.out.valid) {
-    printf(p"ColorQuantizer: Mode=${io.mode} In(V=${io.in.valid},R=${io.in.ready},D=${io.in.bits}) TargetBits(Y=${yTargetEffectiveBits},Cb=${cbTargetEffectiveBits},Cr=${crTargetEffectiveBits}) -> Out(V=${io.out.valid},R=${io.out.ready},D=${io.out.bits})\n")
-  }
+
 }
