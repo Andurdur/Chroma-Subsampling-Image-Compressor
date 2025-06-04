@@ -149,16 +149,19 @@ Testing should run for Chroma Subsampling, Color Quantization, RGB2YCB, and Spat
 
 Chroma-Subsampling-Image-Compressor/
 ├── modules/
+│
 │   ├── RGB2YCbCr             [✓] Complete 
 │   ├── ChromaSubsampler      [✓] Complete  
 │   ├── SpatialDownSampler    [✓] Complete  
 │   ├── ColorQuantizer        [✓] Complete   
 │   └── PixelBundle           [✓] Complete  
+│
 ├── top/
 │   ├── ImageCompressorTop    [✓] Complete 
 │   │   └── Current: Wires submodules.  
 │   └── ImageCompressorTopApp [✓] Complete  
-│       └── CLI & generator for FIRRTL/Verilog + optional PNG dumps.  
+│       └── CLI & generator for FIRRTL/Verilog + optional PNG dumps. 
+│ 
 └── test/
     ├── RGB2YCbCrTester       [✓] Passing  
     ├── SpatialDownSamplerTester [✓] Passing  
