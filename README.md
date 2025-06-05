@@ -101,7 +101,7 @@ To run the generator:
 
 ```bash
 # From repository root
-$ sbt "Test / runMain jpeg.ImageCompressorTopApp"
+$ sbt "Test / runMain jpeg.ImageCompressionApp"
 ```
 Available command-line parameters (all optional, with defaults):
 
