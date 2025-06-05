@@ -37,7 +37,6 @@ This repository implements a hardware-accelerated image compression pipeline in 
    - **Description:**  
      - Supports parameterizable subsampling ratios (e.g., 4:4:4 → 4:2:2, 4:2:0, etc.).  
      - Locally downsamples the Cb/Cr channels on a per-block or per-row basis (configurable at generate-time).  
-     - Current implementation is a pass-through stub (no-op) that can be expanded to average or drop chroma samples in tiles of size 2×1 (for 4:2:2) or 2×2 (for 4:2:0).  
 
 3. **Spatial Downsampling**  
    - **Module:** `SpatialDownSampler`  
@@ -51,7 +50,6 @@ This repository implements a hardware-accelerated image compression pipeline in 
    - **Description:**  
      - Applies bit-width reduction (e.g., 8 bits → 4 bits per component) or palette indexing to Y, Cb, and Cr.  
      - Intended to reduce memory footprint and downstream bandwidth.  
-     - Current implementation is a no-op stub; hooking in a uniform‐quantization or k-means quantizer is left for future work.  
 
 5. **Pixel Bundling (& Packetization)**  
    - **Module:** `PixelBundle`  
