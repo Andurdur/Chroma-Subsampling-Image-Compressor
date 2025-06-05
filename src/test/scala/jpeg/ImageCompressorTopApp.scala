@@ -188,8 +188,8 @@ object ImageCompressionApp extends App {
   // param_b: Vertical sampling reference (must be equal to param_a or 0)
   //   param_b == param_a -> No vertical subsampling of chroma lines (e.g., 4:4:4, 4:2:2, 4:1:1)
   //   param_b == 0       -> Chroma lines subsampled by 2 (e.g., 4:4:0 (uncommon), 4:2:0, 4:1:0 (uncommon))
-  val selectedChromaParamA: Int = 1 // Example: for 4:4:4
-  val selectedChromaParamB: Int = 0 // Example: for 4:4:4 (param_b == param_a)
+  val selectedChromaParamA: Int = 2 // Example: for 4:4:4
+  val selectedChromaParamB: Int = 2 // Example: for 4:4:4 (param_b == param_a)
   // For 4:2:2, use: selectedChromaParamA = 2, selectedChromaParamB = 2
   // For 4:2:0, use: selectedChromaParamA = 2, selectedChromaParamB = 0
   println(s"Selected Chroma Subsampling (J:a:b): 4:$selectedChromaParamA:$selectedChromaParamB")
@@ -201,13 +201,13 @@ object ImageCompressionApp extends App {
   println(s"Selected Quantization Bits (Y/Cb/Cr): $yTargetQuantBits/$cbTargetQuantBits/$crTargetQuantBits")
 
   // 3. SPATIAL DOWNSAMPLING FACTOR (1, 2, 4, or 8)
-  val selectedSpatialFactor: Int = 1 
+  val selectedSpatialFactor: Int = 2 
   println(s"Selected Spatial Downsampling Factor: $selectedSpatialFactor")
 
   // 4. PIPELINE ORDERING
-  val op1_choice: ProcessingStep.Type = ProcessingStep.SpatialSampling
-  val op2_choice: ProcessingStep.Type = ProcessingStep.ColorQuantization
-  val op3_choice: ProcessingStep.Type = ProcessingStep.ChromaSubsampling
+  val op1_choice: ProcessingStep.Type = ProcessingStep.ChromaSubsampling
+  val op2_choice: ProcessingStep.Type = ProcessingStep.SpatialSampling
+  val op3_choice: ProcessingStep.Type = ProcessingStep.ColorQuantization
   println(s"Selected Pipeline Order: $op1_choice -> $op2_choice -> $op3_choice")
   println("----------------------------------------------------")
 
